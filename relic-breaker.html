@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0f14">
+<meta name="description" content="古機拆解：改編自 Ludum Dare 60《Some Assembly Required》的 Casino 動作遊戲。切連線、拆護甲、破核心三階段拆解怪物，放慢時間對齊攻擊、倒帶挽救失誤，收集籌碼並觸發 JACKPOT。">
+<title>古機拆解 · RELIC BREAKER｜LightSpin</title>
+<style>
+/* ============================================================
+   古科技／博物館主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(80,200,180,.12), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(255,140,60,.10), transparent 42%),
+    #05090c;
+  color:#dceae8;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#bfe9df;text-shadow:0 0 10px rgba(80,200,180,.7),0 0 26px rgba(255,140,60,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#7fd8c8;opacity:.8}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:1px solid rgba(80,200,180,.35);
+  border-radius:10px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 28px rgba(80,200,180,.14),inset 0 0 36px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(8,20,22,.82),rgba(3,7,9,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#bfe9df;
+  text-shadow:0 0 14px rgba(80,200,180,.8),0 0 30px rgba(255,140,60,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#b9cfca;max-width:46ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:42px;padding:8px 16px;border-radius:8px;font:inherit;
+  font-weight:800;letter-spacing:.06em;border:1px solid rgba(80,200,180,.5);color:#bfe9df;
+  background:rgba(80,200,180,.12);transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 20px rgba(80,200,180,.4)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#3fb8a0,#7de0c8);color:#06231d;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+button.tool.active{background:rgba(255,210,63,.25);border-color:#ffd23f;color:#ffd23f}
+
+.toolbar{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.toolbar button{min-width:92px;font-size:12px}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(80,200,180,.12),rgba(20,40,38,.1));
+  border:1px solid rgba(80,200,180,.22);border-radius:8px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#7fd8c8}
+.hud strong{display:block;font-size:15px;color:#e8f6f2;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#94aaa5;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>古機拆解</h1>
+  <p class="sub">RELIC BREAKER · OLD TECH, BORROWED TIME</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="古機拆解遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>SOME ASSEMBLY REQUIRED</h2>
+      <p>遠古裝置把展品變成了怪物。選對工具，按順序拆解：<br>
+         <b style="color:#7de0c8">① 剪斷連線</b> → <b style="color:#ffb347">② 拆卸護甲</b> → <b style="color:#ff6b6b">③ 擊破核心</b>。<br>
+         按住 <b>SHIFT</b> 放慢時間對齊攻擊，按 <b>R</b> 倒帶挽救失誤。</p>
+      <button class="neon primary" id="startBtn">啟動裝置</button>
+      <p style="font-size:11px;opacity:.75">1/2/3 切工具 · 點擊怪物拆解 · SHIFT 慢動作 · R 倒帶</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>SYSTEM FAILURE</h2>
+      <p>怪物突破了防線</p>
+      <p>拆解 <b id="finalKills">0</b> 台 · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新啟動</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>ALL CLEAR</h2>
+      <p>所有展品已恢復平靜</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>拆解</span><strong id="hKills">0/12</strong></div>
+    <div><span>生命</span><strong id="hLives">3</strong></div>
+    <div><span>慢動作</span><strong id="hSlow">100</strong></div>
+    <div class="gold"><span>倒帶</span><strong id="hRewind">3</strong></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="neon tool active" data-tool="1">① 剪連線</button>
+    <button class="neon tool" data-tool="2">② 拆護甲</button>
+    <button class="neon tool" data-tool="3">③ 破核心</button>
+    <button class="neon" id="slowBtn">SHIFT 慢動作</button>
+    <button class="neon gold" id="rewindBtn">R 倒帶</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Some Assembly Required》（mattlongname 等）的「三階段拆解 + 慢動作 + 倒帶」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+  var GOAL = 12;
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';           // start | playing | over | win
+  var monsters = [], particles = [], texts = [];
+  var chips = 0, kills = 0, lives = 3;
+  var tool = 1, slow = 100, rewinds = 3;
+  var slowHeld = false, spawnTimer = 0, shake = 0, blink = 0;
+  var rewindFx = 0;
+  var slot = { active: false, reels: ['7','★','◆'], t: 0, pay: null, timer: 0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+
+  /* ================= 粒子 / 文字 ================= */
+  function burst(x, y, n, color) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 220;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-100,
+        life:.4+Math.random()*.5,maxLife:.9,color:color,size:2+Math.random()*3});
+    }
+  }
+  function addText(txt, x, y, color) { texts.push({text:txt,x:x,y:y,life:.9,maxLife:.9,color:color}); }
+  function updateFx(dt) {
+    for (var i = particles.length-1; i>=0; i--) {
+      var p = particles[i];
+      p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=520*dt; p.life-=dt;
+      if (p.life<=0) particles.splice(i,1);
+    }
+    for (var j = texts.length-1; j>=0; j--) {
+      texts[j].y-=30*dt; texts[j].life-=dt;
+      if (texts[j].life<=0) texts.splice(j,1);
+    }
+    shake=Math.max(0,shake-dt*2.5);
+    rewindFx=Math.max(0,rewindFx-dt*1.5);
+  }
+
+  /* ================= 怪物 ================= */
+  function spawnMonster() {
+    var conn = 2 + rand(2), armor = 2 + rand(2), core = 2 + rand(2);
+    monsters.push({
+      x: W + 60, y: 80 + rand(260),
+      conn: conn, maxConn: conn,
+      armor: armor, maxArmor: armor,
+      core: core, maxCore: core,
+      speed: 34 + rand(22) + kills * 1.2,
+      tick: rand(6), dead: false
+    });
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    monsters=[]; particles=[]; texts=[];
+    chips=0;kills=0;lives=3;tool=1;slow=100;rewinds=3;
+    spawnTimer=0;shake=0;rewindFx=0;blink=0;
+    slot.active=false;slot.pay=null;slot.timer=0;
+    setTool(1); updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); mode='playing'; resetGame();
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    beep(520,.08,'triangle',.05);
+  }
+  function gameOver() {
+    mode='over';
+    $('finalKills').textContent=kills;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    beep(880,.16,'sine',.06);setTimeout(function(){beep(1174,.22,'sine',.05);},110);
+  }
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hKills').textContent=kills+'/'+GOAL;
+    $('hLives').textContent=lives;
+    $('hSlow').textContent=Math.ceil(slow);
+    $('hRewind').textContent=rewinds;
+    document.querySelectorAll('.tool').forEach(function(b){
+      b.classList.toggle('active', +b.getAttribute('data-tool')===tool);
+    });
+  }
+  function setTool(t){ tool=t; updateHUD(); beep(400+t*80,.04,'square',.03); }
+
+  /* ================= 拆解交互 ================= */
+  function attackAt(mx, my) {
+    if (mode!=='playing' || slot.active) return;
+    for (var i=0;i<monsters.length;i++) {
+      var m=monsters[i];
+      if (Math.abs(mx-m.x)<46 && Math.abs(my-m.y)<58) {
+        if (m.conn>0) {
+          if (tool!==1){ addText('先剪連線',m.x,m.y-30,'#ff9f9f'); return; }
+          m.conn--; burst(m.x,m.y-24,8,'#7de0c8'); beep(720,.06,'square',.04);
+        } else if (m.armor>0) {
+          if (tool!==2){ addText('先拆護甲',m.x,m.y-30,'#ffcf8a'); return; }
+          m.armor--; burst(m.x,m.y,8,'#ffb347'); beep(560,.07,'square',.04);
+        } else {
+          if (tool!==3){ addText('用核心工具',m.x,m.y-30,'#ff9f9f'); return; }
+          m.core--; burst(m.x,m.y+20,10,'#ff6b6b'); beep(880,.08,'sine',.05);
+          if (m.core<=0) killMonster(i);
+        }
+        updateHUD();
+        return;
+      }
+    }
+  }
+  function killMonster(idx) {
+    var m=monsters[idx];
+    monsters.splice(idx,1);
+    kills++; chips+=10+kills*2;
+    burst(m.x,m.y,30,'#ffd23f'); addText('+ 拆解',m.x,m.y-20,'#ffd23f');
+    shake=Math.min(1,shake+.3);
+    beep(1046,.12,'sine',.06);
+    // 25% 機率觸發 JACKPOT
+    if (Math.random()<.25 && !slot.active) {
+      slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+      slot.reels=['7','★','◆'];
+    }
+    updateHUD();
+    if (kills>=GOAL) win();
+  }
+
+  function doRewind() {
+    if (mode!=='playing'||rewinds<=0||slot.active) return;
+    rewinds--; rewindFx=1;
+    monsters.forEach(function(m){ m.x=Math.min(W+80,m.x+320); });
+    slow=Math.min(100,slow+30);
+    addText('REWIND!',W/2,H/2,'#b9a3ff');
+    beep(300,.2,'sawtooth',.05);
+    updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    updateFx(dt); blink+=dt;
+
+    // 抽獎面板
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if (slot.t>0){ for(var i=0;i<3;i++) if(Math.random()<.35) slot.reels[i]=SYMBOLS[rand(SYMBOLS.length)]; }
+        else if (slot.pay===null && slot.timer===0) {
+          for(var j=0;j<3;j++) slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?40:((a===b||b===c||a===c)?15:5);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=40?50:16,'#ffd23f');
+          beep(pay>=40?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if (slot.timer>0){ slot.timer+=dt; if(slot.timer>.8){slot.active=false;slot.timer=0;} }
+    }
+
+    if (mode!=='playing') return;
+
+    // 慢動作資源
+    if (slowHeld && slow>0) slow=Math.max(0,slow-28*dt);
+    else slow=Math.min(100,slow+14*dt);
+    var timeScale = (slowHeld&&slow>0) ? .25 : 1;
+
+    // 生成怪物
+    spawnTimer-=dt;
+    if (spawnTimer<=0 && monsters.length<6 && kills<GOAL) {
+      spawnMonster(); spawnTimer=1.5+Math.random()*.9;
+    }
+
+    // 怪物移動
+    for (var k=monsters.length-1;k>=0;k--) {
+      var m=monsters[k];
+      m.x-=m.speed*timeScale*dt;
+      m.tick+=dt*timeScale;
+      if (m.x<40) {
+        monsters.splice(k,1); lives--; shake=.8;
+        burst(40,m.y,16,'#ff6b6b');
+        beep(150,.25,'sawtooth',.05);
+        updateHUD();
+        if (lives<=0){gameOver();return;}
+      }
+    }
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function drawBackground(){
+    var g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#0d1c1e');g.addColorStop(1,'#05090c');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // 博物館展櫃格線
+    ctx.strokeStyle='rgba(80,200,180,.06)';ctx.lineWidth=1;
+    for(var x=0;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=0;y<H;y+=80){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    // 底部導軌
+    ctx.fillStyle='rgba(80,200,180,.08)';ctx.fillRect(0,H-30,W,30);
+    ctx.strokeStyle='rgba(80,200,180,.25)';ctx.beginPath();ctx.moveTo(0,H-30);ctx.lineTo(W,H-30);ctx.stroke();
+  }
+
+  function drawMonster(m){
+    ctx.save();
+    // 連線（左側）
+    if(m.conn>0){
+      ctx.strokeStyle='#7de0c8';ctx.lineWidth=2;
+      for(var i=0;i<m.conn;i++){
+        var ty=m.y-20+i*20;
+        ctx.beginPath();ctx.moveTo(m.x-46,ty);
+        ctx.quadraticCurveTo(m.x-24,ty+10,m.x-16,m.y);
+        ctx.stroke();
+        ctx.fillStyle='#7de0c8';ctx.beginPath();ctx.arc(m.x-46,ty,3,0,Math.PI*2);ctx.fill();
+      }
+    }
+    // 護甲
+    if(m.armor>0){
+      ctx.fillStyle='#5a3a18';ctx.strokeStyle='#ffb347';ctx.lineWidth=2;
+      for(var a=0;a<m.armor;a++){
+        var ang=a*Math.PI*2/m.maxArmor+blink*.3;
+        var ax=m.x+Math.cos(ang)*30, ay=m.y+Math.sin(ang)*30;
+        ctx.beginPath();ctx.arc(ax,ay,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }
+    }
+    // 核心
+    var coreColor=m.core>0?'#ff6b6b':'#4a4a4a';
+    ctx.shadowColor=coreColor;ctx.shadowBlur=12;
+    ctx.fillStyle=coreColor;
+    ctx.beginPath();ctx.arc(m.x,m.y,16,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='#ffd9a0';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(m.x,m.y,16,0,Math.PI*2);ctx.stroke();
+    // 核心 HP 點
+    ctx.fillStyle='#fff';
+    for(var h=0;h<m.core;h++){
+      ctx.beginPath();ctx.arc(m.x-6+h*6,m.y+26,2.5,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawSlot(){
+    if(!slot.active)return;
+    ctx.save();
+    var pw=250,ph=120,px=W/2-pw/2,py=18;
+    ctx.fillStyle='rgba(8,18,20,.95)';ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+    ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+    ctx.fillText('JACKPOT',W/2,py+16);
+    for(var i=0;i<3;i++){
+      var rw=56,rx=px+20+i*(rw+15),ry=py+28;
+      ctx.fillStyle='#0c1416';ctx.fillRect(rx,ry,rw,54);
+      ctx.strokeStyle='#7de0c8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+      ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+      ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+    }
+    if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';
+      ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+106);}
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    drawBackground();
+    monsters.forEach(drawMonster);
+    for(var i=0;i<particles.length;i++){var p=particles[i];
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();}
+    texts.forEach(function(t){
+      ctx.save();ctx.globalAlpha=Math.max(0,t.life/t.maxLife);
+      ctx.fillStyle=t.color;ctx.font='bold 14px system-ui';ctx.textAlign='center';
+      ctx.fillText(t.text,t.x,t.y);ctx.restore();});
+    drawSlot();
+    // 慢動作覆蓋
+    if(slowHeld&&slow>0){ctx.fillStyle='rgba(80,200,180,.06)';ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='rgba(125,224,200,.7)';ctx.font='bold 13px system-ui';ctx.textAlign='left';
+      ctx.fillText('TIME DILATION',12,22);}
+    // 倒帶特效
+    if(rewindFx>0){ctx.fillStyle='rgba(185,163,255,'+(rewindFx*.25)+')';ctx.fillRect(0,0,W,H);}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(e.code==='Digit1')setTool(1);
+    if(e.code==='Digit2')setTool(2);
+    if(e.code==='Digit3')setTool(3);
+    if(e.code==='ShiftLeft'||e.code==='ShiftRight'){slowHeld=true;e.preventDefault();}
+    if(e.code==='KeyR'){doRewind();}
+  });
+  window.addEventListener('keyup',function(e){
+    if(e.code==='ShiftLeft'||e.code==='ShiftRight')slowHeld=false;
+  });
+  canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();unlockAudio();
+    var rect=canvas.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)/rect.width*W, my=(e.clientY-rect.top)/rect.height*H;
+    attackAt(mx,my);
+  });
+  document.querySelectorAll('.tool').forEach(function(b){
+    b.addEventListener('click',function(){setTool(+b.getAttribute('data-tool'));});
+  });
+  var slowBtn=$('slowBtn');
+  slowBtn.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();slowHeld=true;});
+  slowBtn.addEventListener('pointerup',function(){slowHeld=false;});
+  slowBtn.addEventListener('pointerleave',function(){slowHeld=false;});
+  $('rewindBtn').addEventListener('click',function(e){e.stopPropagation();doRewind();});
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
