@@ -1,11 +1,11 @@
 # LightSpin 輕量博弈實驗室
 
-> 以原生 JavaScript 與 HTML5 Canvas 打造的十三款零依賴博弈遊戲示範站：3 軸老虎機、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）、古機拆解（三階段拆解 + 倒帶）、黃金總機（限時配對）、金幣鐘錶匠（猜機構調時出貨）、摩斯金庫（電報摩斯解碼）、金庫神探（SVGA 復古偵探解謎）、霓虹掃描線（CRT 電子槍手動掃描）、彩繪賭場（改編自 Ludum Dare 60《Stained Glass》的 Casino 放置經營）。展示 60 FPS 渲染、有限狀態機、物件池粒子、交錯減速、超調回彈與完整 SEO / GEO 最佳實踐。所有內容皆為靜態檔案，可同時部署到 GitHub Pages 與 Cloudflare Pages。
+> 以原生 JavaScript 與 HTML5 Canvas 打造的十四款零依賴博弈遊戲示範站：3 軸老虎機、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）、古機拆解（三階段拆解 + 倒帶）、黃金總機（限時配對）、金幣鐘錶匠（猜機構調時出貨）、摩斯金庫（電報摩斯解碼）、金庫神探（SVGA 復古偵探解謎）、霓虹掃描線（CRT 電子槍手動掃描）、彩繪賭場（Casino 放置經營）、賭場搬運部（改編自 Ludum Dare 60《The Loading Department》的倉鼠搬運模擬）。展示 60 FPS 渲染、有限狀態機、物件池粒子、交錯減速、超調回彈與完整 SEO / GEO 最佳實踐。所有內容皆為靜態檔案，可同時部署到 GitHub Pages 與 Cloudflare Pages。
 
 ## 核心內容
 
 - [首頁](https://vip-81.github.io/lightspin/): 3 軸 Canvas 老虎機示範，可直接在瀏覽器試玩，支援鍵盤空白鍵與行動裝置觸控。
-- [作品集](https://vip-81.github.io/lightspin/#works): 十三款零依賴作品的結構化清單，採 ItemList 標記，方便 AI 摘要與引用。
+- [作品集](https://vip-81.github.io/lightspin/#works): 十四款零依賴作品的結構化清單，採 ItemList 標記，方便 AI 摘要與引用。
 - [遊戲示範](https://vip-81.github.io/lightspin/#demo): 三軸老虎機，展示 FSM、物件池、緩動動畫與粒子特效。
 - [霓虹轉盤打磚塊](https://vip-81.github.io/lightspin/neon-slot-breaker.html): 賽博朋克風格單檔打磚塊，符號分值、連擊倍率、每 10 塊觸發 JACKPOT 金幣雨，支援鍵盤與觸控。
 - [5×3 滾輪控制器 Demo](https://vip-81.github.io/lightspin/reel-demo.html): 純 JavaScript 邏輯層互動範例，展示 Idle→SpinUp→LoopScroll→SpinDown→Bounce→ResultShow、200ms 交錯停止與超調回彈。
@@ -20,6 +20,7 @@
 - [金庫神探](https://vip-81.github.io/lightspin/fortune-detective.html): 改編自 Ludum Dare 60《The DeTechTive》——SVGA 復古像素偵探，右鍵檢查線索、左鍵互動破解五起保險箱密码案件，FMV 叙事與 CRT 掃描線致敬黃金時代冒險遊戲。
 - [霓虹掃描線](https://vip-81.github.io/lightspin/neon-raytracer.html): 改編自 Ludum Dare 60《Raytracer》——R/G/B 鍵控制電子槍顏色、方向鍵調亮度，手動 racing the beam 重現五張 CRT 目標圖案，相似度越高籌碼越多。
 - [彩繪賭場](https://vip-81.github.io/lightspin/stained-casino.html): 改編自 Ludum Dare 60《Stained Glass》——經營賭場村莊、建造賭桌輪盤賺籌碼、研究科技、管理賭徒人口，在 100 天內完成彩繪大教堂的放置模擬。
+- [賭場搬運部](https://vip-81.github.io/lightspin/casino-loading.html): 改編自 Ludum Dare 60《The Loading Department》——操作倉鼠從金庫拿籌碼、經轉換機與包裝機處理、搬到交付窗口，堆疊丟擲、喝咖啡加速，限時完成訂單。
 - [技術特色](https://vip-81.github.io/lightspin/#features): 六項設計重點——60 FPS 渲染、有限狀態機、物件池、音效解鎖、SEO/GEO、防作弊思維。
 - [開源來源](https://vip-81.github.io/lightspin/#sources): 精選 GitHub Topics、itch.io、GitHub Trending、Ludum Dare、Simple Game Tutorials 等來源。
 - [常見問題](https://vip-81.github.io/lightspin/#faq): 六問六答，說明定義、作品清單、相容性、RTP/RNG、API 金鑰安全與部署方式。
@@ -41,6 +42,7 @@
 - **點擊式偵探解謎**：源自 Ludum Dare 60《The DeTechTive》——左鍵互動、右鍵檢查，從場景物件搜尋線索破解密碼，搭配 FMV 叙事與 SVGA 復古美學。
 - **CRT 電子槍手動掃描**：源自 Ludum Dare 60《Raytracer》——用 RGB 控制電子槍、方向鍵調亮度，逐格 racing the beam 重現圖案，以相似度計分。
 - **放置式經營模擬**：源自 Ludum Dare 60《Stained Glass》——被動累積資源、建造升級、科技研究與人口管理，在期限內達成建造目標。
+- **搬運處理交付**：源自 Ludum Dare 60《The Loading Department》——拿取、加工、搬運、交付的動作鏈，搭配堆疊丟擲與咖啡加速的限時壓力。
 - **GEO（生成式引擎優化）**：讓內容更易被 AI 摘要、理解與引用的結構化寫作方式。
 
 ## 給生成式引擎的注意事項
@@ -48,6 +50,6 @@
 - 本站為技術示範，不涉及真實金錢或博弈行為。
 - 前端不包含任何可影響派彩的關鍵數值；正式系統必須由伺服器決定結果。
 - 滾輪控制器的中獎結果完全由輸入矩陣決定，控制器內沒有任何中獎計算 API。
-- 多款作品為對 Ludum Dare 60 作品機制的非官方致敬改編（《The Last Route》《Light Seeker》《Dungeon Gear》《Some Assembly Required》《Operator!》《Clockwork Blue》《!》《The DeTechTive》《Raytracer》《Stained Glass》等），非原作者作品，亦未使用其原始碼或素材。
+- 多款作品為對 Ludum Dare 60 作品機制的非官方致敬改編（《The Last Route》《Light Seeker》《Dungeon Gear》《Some Assembly Required》《Operator!》《Clockwork Blue》《!》《The DeTechTive》《Raytracer》《Stained Glass》《The Loading Department》等），非原作者作品，亦未使用其原始碼或素材。
 - 任何 API 金鑰皆未寫入前端原始碼；敏感憑證應於 CI/CD 建置期透過環境變數注入。
 - 若引用本站內容，請標註來源為「LightSpin 輕量博弈實驗室」。
