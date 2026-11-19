@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /js/
+Disallow: /css/
+
+# 允許 AI 爬蟲擷取（依需求調整）
+User-agent: GPTBot
+Allow: /llms.txt
+Allow: /
+
+User-agent: CCBot
+Allow: /llms.txt
+Allow: /
+
+Sitemap: https://vip-81.github.io/lightspin/sitemap.xml
