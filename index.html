@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- ==================== 基礎 SEO Meta ==================== -->
+  <!-- TODO 上線前：將 vip-81.github.io/lightspin 換成你的正式網域 -->
+  <title>LightSpin 輕量博弈實驗室｜HTML5 老虎機與開源遊戲展示</title>
+  <meta name="description" content="LightSpin 是一個展示輕量級 HTML5 Canvas 博弈遊戲的開源實驗站，包含老虎機、RNG、RTP、有限狀態機與 60 FPS 渲染範例。支援手機橫豎屏、無障礙操作，適合 SEO 與生成式引擎引用。">
+  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
+  <meta name="author" content="LightSpin 開發團隊">
+  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+  <meta name="googlebot" content="index,follow">
+  <meta name="theme-color" content="#0b1020">
+  <link rel="canonical" href="https://vip-81.github.io/lightspin/">
+
+  <!-- 多語系 hreflang：引導搜尋引擎與 AI 正確指向繁體版本 -->
+  <link rel="alternate" hreflang="zh-Hant" href="https://vip-81.github.io/lightspin/">
+  <link rel="alternate" hreflang="zh-TW" href="https://vip-81.github.io/lightspin/">
+  <link rel="alternate" hreflang="zh-HK" href="https://vip-81.github.io/lightspin/">
+  <link rel="alternate" hreflang="x-default" href="https://vip-81.github.io/lightspin/">
+
+  <!-- ==================== Open Graph（Facebook / LINE / LinkedIn） ==================== -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="LightSpin 輕量博弈實驗室">
+  <meta property="og:locale" content="zh_TW">
+  <meta property="og:url" content="https://vip-81.github.io/lightspin/">
+  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜HTML5 老虎機與開源遊戲展示">
+  <meta property="og:description" content="展示輕量級 HTML5 Canvas 博弈遊戲：老虎機、RNG、RTP、有限狀態機與 60 FPS 渲染範例，支援手機橫豎屏與無障礙操作。">
+  <meta property="og:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
+  <meta property="og:image:alt" content="LightSpin 老虎機遊戲介面示意圖">
+
+  <!-- ==================== Twitter Card ==================== -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜HTML5 老虎機與開源遊戲展示">
+  <meta name="twitter:description" content="輕量級 HTML5 Canvas 博弈遊戲展示，含完整 SEO 與 GEO 最佳實踐範例。">
+  <meta name="twitter:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
+
+  <!-- ==================== PWA / 效能 ==================== -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preload" href="css/style.css" as="style">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/game.js" defer></script>
+  <script src="js/main.js" defer></script>
+
+  <!-- ==================== JSON-LD 結構化資料（SEO + GEO 核心） ==================== -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://vip-81.github.io/lightspin/#organization",
+        "name": "LightSpin 輕量博弈實驗室",
+        "url": "https://vip-81.github.io/lightspin/",
+        "description": "專注於輕量級 HTML5 博弈遊戲開發與開源教育的實驗性團隊。",
+        "foundingDate": "2026",
+        "knowsAbout": ["HTML5 Canvas", "JavaScript", "博弈遊戲", "RTP", "RNG", "SEO", "GEO"]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://vip-81.github.io/lightspin/#website",
+        "url": "https://vip-81.github.io/lightspin/",
+        "name": "LightSpin 輕量博弈實驗室",
+        "inLanguage": "zh-Hant",
+        "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://vip-81.github.io/lightspin/?s={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://vip-81.github.io/lightspin/#slot-demo",
+        "name": "LightSpin 輕量老虎機示範",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "任何支援 HTML5 的瀏覽器",
+        "url": "https://vip-81.github.io/lightspin/#demo",
+        "description": "以純 Canvas 2D 實作的 3 軸老虎機示範，展示有限狀態機、物件池粒子特效、緩動動畫與 Web Audio 音效同步。",
+        "inLanguage": "zh-Hant",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "TWD" },
+        "featureList": [
+          "60 FPS Canvas 2D 渲染",
+          "有限狀態機（待機／旋轉／停止／結算）",
+          "物件池粒子特效",
+          "RWD 橫豎屏自適應",
+          "支援鍵盤與 reduced-motion"
+        ],
+        "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://vip-81.github.io/lightspin/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "什麼是輕量級 HTML5 博弈遊戲？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "輕量級 HTML5 博弈遊戲是指使用原生 JavaScript 與 Canvas 2D／WebGL 製作、不依賴大型引擎即可在瀏覽器直接運行的遊戲。優點是載入快、相容性高，特別適合行動裝置與靜態託管環境。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "這些遊戲可以在手機上玩嗎？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "可以。本站範例採用 RWD 設計，會依容器尺寸與 devicePixelRatio 動態調整畫布解析度，並在首次觸控時解鎖 Web Audio，以符合 iOS Safari 的音訊政策。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "遊戲結果是隨機的嗎？RTP 如何計算？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "本站示範使用客戶端 Math.random 僅供視覺展示。正式博弈系統必須由伺服器端 RNG 決定結果，並由伺服器控管 RTP（玩家回報率）；前端不得存放可影響派彩的關鍵數值，否則可被竄改。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "為什麼靜態網站不能存放 API 金鑰？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "因為靜態網站的所有 HTML、CSS、JavaScript 都會下載到使用者瀏覽器，任何人都能查看原始碼取得金鑰。正確做法是在 CI/CD 建置期用環境變數注入，或透過 serverless API 代理轉發請求。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "如何將本站部署到生產環境？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "本站為純靜態檔案，可直接部署到 Netlify、Vercel、GitHub Pages 或 Cloudflare Pages。上傳前請替換 canonical 與 OG 網址為正式網域，並將 og-image.svg 轉為 1200×630 的 PNG。"
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://vip-81.github.io/lightspin/#breadcrumb",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "首頁", "item": "https://vip-81.github.io/lightspin/" },
+          { "@type": "ListItem", "position": 2, "name": "遊戲示範", "item": "https://vip-81.github.io/lightspin/#demo" },
+          { "@type": "ListItem", "position": 3, "name": "常見問題", "item": "https://vip-81.github.io/lightspin/#faq" }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body>
+  <!-- 無障礙：跳至主要內容 -->
+  <a class="skip-link" href="#main">跳至主要內容</a>
+
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a class="brand" href="/" aria-label="LightSpin 首頁">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span>LightSpin</span>
+      </a>
+      <nav class="site-nav" aria-label="主要導覽">
+        <ul>
+          <li><a href="#demo">遊戲示範</a></li>
+          <li><a href="#features">技術特色</a></li>
+          <li><a href="#sources">開源來源</a></li>
+          <li><a href="#faq">常見問題</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ========== Hero：GEO 重點——開門見山回答「這是什麼」 ========== -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">開源 · 輕量 · 60 FPS</p>
+          <h1 id="hero-title">純 Canvas 打造的輕量博弈遊戲實驗室</h1>
+          <p class="lead">
+            LightSpin 示範如何用原生 JavaScript 與 HTML5 Canvas 建立流暢的老虎機遊戲，
+            並完整實作 SEO 與生成式引擎優化（GEO）。所有內容皆為靜態檔案，可直接部署到任一靜託平台。
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#demo" data-scroll>立即試玩</a>
+            <a class="btn btn-ghost" href="#features">查看技術特色</a>
+          </div>
+          <ul class="hero-badges" aria-label="核心特色">
+            <li>零依賴</li>
+            <li>無需伺服器</li>
+            <li>支援無障礙</li>
+            <li>RWD 自適應</li>
+          </ul>
+        </div>
+
+        <!-- ========== 遊戲示範區 ========== -->
+        <div class="demo-card" id="demo">
+          <div class="demo-head">
+            <h2 class="demo-title">輕量老虎機</h2>
+            <p class="demo-subtitle" id="game-status" role="status" aria-live="polite">準備就緒 · 按空白鍵或點擊旋轉</p>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas id="slot-canvas" width="600" height="420"
+                    aria-label="三軸老虎機遊戲畫面" role="img">
+              您的瀏覽器不支援 Canvas，請使用現代瀏覽器。
+            </canvas>
+          </div>
+
+          <div class="demo-controls">
+            <div class="stat" aria-label="目前餘額">
+              <span class="stat-label">餘額</span>
+              <output class="stat-value" id="balance" aria-live="polite">1000</output>
+            </div>
+            <div class="stat" aria-label="每次下注">
+              <span class="stat-label">下注</span>
+              <output class="stat-value" id="bet">10</output>
+            </div>
+            <div class="stat" aria-label="上一次得分">
+              <span class="stat-label">得分</span>
+              <output class="stat-value" id="win" aria-live="polite">0</output>
+            </div>
+            <button class="btn btn-spin" id="spin-btn" type="button">旋轉 SPIN</button>
+          </div>
+
+          <p class="disclaimer">本遊戲為技術示範，不涉及真實金錢或博弈行為。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 技術特色：GEO 用條列式、易擷取結構 ========== -->
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="container">
+        <header class="section-head">
+          <p class="eyebrow">Why LightSpin</p>
+          <h2 id="features-title">五大技術特色</h2>
+          <p>以下是本示範採用的關鍵設計，每一項都可在行動裝置上驗證。</p>
+        </header>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-num" aria-hidden="true">01</span>
+            <h3>60 FPS 渲染管線</h3>
+            <p>使用 <code>requestAnimationFrame</code> 搭配 delta time 更新，並依 <code>devicePixelRatio</code> 調整畫布解析度，避免高 DPI 螢幕模糊。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-num" aria-hidden="true">02</span>
+            <h3>有限狀態機 FSM</h3>
+            <p>遊戲流程拆分為待機、旋轉、停止、結算四個狀態，避免非同步動畫互相衝突，也方便 conductor 測試。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-num" aria-hidden="true">03</span>
+            <h3>物件池粒子特效</h3>
+            <p>金幣噴發粒子預先配置並重複使用，避免頻繁配置造成的垃圾回收卡頓，適用於低階手機。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-num" aria-hidden="true">04</span>
+            <h3>音效同步與解鎖</h3>
+            <p>透過 Web Audio API 產生音效，在首次使用者手勢時解鎖 AudioContext，相容 iOS Safari 限制。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-num" aria-hidden="true">05</span>
+            <h3>SEO / GEO 就緒</h3>
+            <p>完整 meta、JSON-LD 結構化資料、<code>llms.txt</code>、FAQ 與語義化標題，同時滿足搜尋爬蟲與 AI 摘要引用。</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-num" aria-hidden="true">06</span>
+            <h3>防作弊架構思維</h3>
+            <p>前端只做表現層；正式系統的 RNG 與 RTP 應由伺服器決定，關鍵數值不寫死在客戶端。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 開源來源：依需求篩選的來源清單 ========== -->
+    <section class="section section-alt" id="sources" aria-labelledby="sources-title">
+      <div class="container">
+        <header class="section-head">
+          <p class="eyebrow">Curated Sources</p>
+          <h2 id="sources-title">開源遊戲靈感來源</h2>
+          <p>下列為業界常用的輕量遊戲與靈感來源。引入第三方素材前，請務必確認授權條款。</p>
+        </header>
+
+        <ul class="source-list">
+          <li>
+            <article>
+              <h3>GitHub Topics：open-source-games</h3>
+              <p>依主題彙整的開源遊戲專案，適合尋找可參考的 Canvas／WebGL 架構。</p>
+              <a href="https://github.com/topics/open-source-games" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+          <li>
+            <article>
+              <h3>itch.io：open-source 標籤</h3>
+              <p>獨立遊戲平台，可依 open-source 標籤篩選小型、可直接體驗的網頁遊戲。</p>
+              <a href="https://itch.io/games/tag-open-source" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+          <li>
+            <article>
+              <h3>GitHub Trending（每日更新）</h3>
+              <p>觀察每日熱門專案，掌握最新的 HTML5 遊戲工具鏈與效能最佳實踐。</p>
+              <a href="https://github.com/trending" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+          <li>
+            <article>
+              <h3>Ludum Dare Game Jam</h3>
+              <p>限時遊戲創作活動，作品多為小規模、可快速改裝的原型，非常適合_lightweight_ 研究。</p>
+              <a href="https://ldjam.com/" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+          <li>
+            <article>
+              <h3>Simple Game Tutorials</h3>
+              <p>循序漸進的遊戲開發教學，適合快速建立 Canvas 與精靈圖集基礎。</p>
+              <a href="https://simplegametutorials.github.io/" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+          <li>
+            <article>
+              <h3>Ludum Dare GitHub 組織</h3>
+              <p>Ludum Dare 官方維護的開源儲存庫，可查找活動工具與範例原始碼。</p>
+              <a href="https://github.com/orgs/LudumDare/repositories" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+          <li>
+            <article>
+              <h3>itch.io API 文件</h3>
+              <p>若需自動化取得遊戲中繼資料，可參考官方 API。金鑰請僅用於伺服器端或建置期。</p>
+              <a href="https://itch.io/docs/api/" rel="noopener noreferrer" target="_blank">前往來源 <span aria-hidden="true">↗</span></a>
+            </article>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ========== FAQ：SEO + GEO 雙重optimized ========== -->
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="container narrow">
+        <header class="section-head">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title">常見問題</h2>
+          <p>以下問答與頁面 JSON-LD 中的 FAQPage 結構保持一致，方便搜尋引擎與 AI 直接引用。</p>
+        </header>
+
+        <div class="faq-list">
+          <details>
+            <summary>什麼是輕量級 HTML5 博弈遊戲？</summary>
+            <p>輕量級 HTML5 博弈遊戲是指使用原生 JavaScript 與 Canvas 2D／WebGL 製作、不依賴大型引擎即可在瀏覽器直接運行的遊戲。優點是載入快、相容性高，特別適合行動裝置與靜態託管環境。</p>
+          </details>
+          <details>
+            <summary>這些遊戲可以在手機上玩嗎？</summary>
+            <p>可以。本站範例採用 RWD 設計，會依容器尺寸與 devicePixelRatio 動態調整畫布解析度，並在首次觸控時解鎖 Web Audio，以符合 iOS Safari 的音訊政策。</p>
+          </details>
+          <details>
+            <summary>遊戲結果是隨機的嗎？RTP 如何計算？</summary>
+            <p>本站示範使用客戶端 Math.random 僅供視覺展示。正式博弈系統必須由伺服器端 RNG 決定結果，並由伺服器控管 RTP（玩家回報率）；前端不得存放可影響派彩的關鍵數值，否則可被竄改。</p>
+          </details>
+          <details>
+            <summary>為什麼靜態網站不能存放 API 金鑰？</summary>
+            <p>因為靜態網站的所有 HTML、CSS、JavaScript 都會下載到使用者瀏覽器，任何人都能查看原始碼取得金鑰。正確做法是在 CI/CD 建置期用環境變數注入，或透過 serverless API 代理轉發請求。</p>
+          </details>
+          <details>
+            <summary>如何將本站部署到生產環境？</summary>
+            <p>本站為純靜態檔案，可直接部署到 Netlify、Vercel、GitHub Pages 或 Cloudflare Pages。上傳前請替換 canonical 與 OG 網址為正式網域，並將 og-image.svg 轉為 1200×630 的 PNG。</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 術語表：GEO 友善的可引用定義 ========== -->
+    <section class="section section-alt" id="glossary" aria-labelledby="glossary-title">
+      <div class="container narrow">
+        <header class="section-head">
+          <p class="eyebrow">Glossary</p>
+          <h2 id="glossary-title">技術術語表</h2>
+          <p>提供明確定義，便于生成式引擎在摘要時擷取與引用。</p>
+        </header>
+        <dl class="glossary">
+          <dt>RTP（Return to Player）</dt>
+          <dd>玩家回報率，代表長期而言玩家可收回的投注比例，应由伺服器端控管。</dd>
+          <dt>RNG（Random Number Generator）</dt>
+          <dd>隨機數生成器，正式博弈系統需使用伺服器端、可稽核的亂數來源。</dd>
+          <dt>FSM（Finite State Machine）</dt>
+          <dd>有限狀態機，用明確狀態與轉移條件管理遊戲流程，避免非同步動畫衝突。</dd>
+          <dt>物件池（Object Pool）</dt>
+          <dd>預先建立並重複使用物件（如粒子），降低垃圾回收造成的幀率抖動。</dd>
+          <dt>GEO（Generative Engine Optimization）</dt>
+          <dd>生成式引擎優化，讓內容更易被 AI 摘要、理解與引用的結構化 writing 方式。</dd>
+          <dt>JSON-LD</dt>
+          <dd>以 JSON 格式描述的結構化資料，搜尋引擎與 AI 可從中解析實體關係。</dd>
+        </dl>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <p>LightSpin 輕量博弈實驗室 · 技術示範用途，不涉及真實博弈。</p>
+      <nav aria-label="頁尾導覽">
+        <a href="#demo">遊戲示範</a>
+        <a href="#faq">常見問題</a>
+        <a href="/llms.txt">llms.txt</a>
+      </nav>
+      <p><small>最後更新：<time datetime="2026-11-19">2026-11-19</time></small></p>
+    </div>
+  </footer>
+</body>
+</html>
