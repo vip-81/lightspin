@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#10141c">
+<meta name="description" content="蒸氣賭船：改編自 Ludum Dare 60《STEAMRAIDERS》的 Casino 船長模擬遊戲。加煤維持鍋爐、煮飯餵飽乘客、痛毆紫色海盜保護貨物，安全抵港賺籌碼。">
+<title>蒸氣賭船 · STEAM RAIDERS｜LightSpin</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:radial-gradient(circle at 18% 12%,rgba(80,140,180,.14),transparent 44%),radial-gradient(circle at 82% 24%,rgba(180,80,160,.10),transparent 42%),#060a10;color:#e0e8f0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:12px 10px 24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;color:#9fd0e8;text-shadow:0 0 10px rgba(80,140,180,.7),0 0 26px rgba(180,80,160,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(120,170,200,.35);border-radius:8px;overflow:hidden;touch-action:none;box-shadow:0 0 30px rgba(80,140,180,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:radial-gradient(circle at 50% 40%,rgba(14,20,30,.88),rgba(4,8,12,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fd0e8;text-shadow:0 0 14px rgba(80,140,180,.8),0 0 30px rgba(180,80,160,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2d2e0;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;font-weight:800;letter-spacing:.03em;border:2px solid rgba(120,170,200,.5);color:#9fd0e8;background:rgba(80,140,180,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#5a9fd0,#9fd0e8);color:#081824;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(80,140,180,.12),rgba(20,26,36,.1));border:1px solid rgba(120,170,200,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0e8f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a8b8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>蒸氣賭船</h1>
+<p class="sub">STEAM RAIDERS · KEEP THE BOILER BURNING</p>
+<div class="stage">
+<canvas id="game" width="800" height="450" aria-label="蒸氣賭船遊戲畫面"></canvas>
+<div class="overlay" id="startScreen">
+<h2>STEAMRAIDERS</h2>
+<p>你是新任船長。加煤維持鍋爐、煮飯餵飽乘客、<br>痛毆想偷貨的<b style="color:#c8a8f0">紫色海盜</b>，<br>安全抵港交貨賺籌碼！</p>
+<button class="neon primary" id="startBtn">啟航</button>
+<p style="font-size:11px;opacity:.75">WASD 移動 · E 互動 · 左鍵/F 打拳 · 完成 4 趟航程</p>
+</div>
+<div class="overlay hidden" id="overScreen">
+<h2>SHIP LOST</h2>
+<p>船沉了或貨物被劫光</p>
+<p>完成航程 <b id="finalVoyages">0</b> · 籌碼 <b id="finalChips">0</b></p>
+<button class="neon primary" id="againBtn">重新啟航</button>
+</div>
+<div class="overlay hidden" id="winScreen">
+<h2>HARBOR MASTER</h2>
+<p>所有貨物安全送達！</p>
+<div class="big" id="winScore">0 籌碼</div>
+<button class="neon primary" id="winAgainBtn">再玩一次</button>
+</div>
+</div>
+<div class="hud">
+<div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+<div><span>航程</span><strong id="hVoyage">1/4</strong></div>
+<div><span>煤</span><strong id="hCoal">100</strong></div>
+<div><span>食物</span><strong id="hFood">100</strong></div>
+<div><span>貨物</span><strong id="hCargo">5</strong></div>
+</div>
+<div class="controls">
+<button class="neon" id="leftBtn">◀</button>
+<button class="neon" id="rightBtn">▶</button>
+<button class="neon" id="actBtn">E 互動</button>
+<button class="neon" id="punchBtn">F 打拳</button>
+</div>
+<p class="tips">改編自 Ludum Dare 60 作品《STEAMRAIDERS》（Cody Raethke &amp; deadjolly）的「船長管理 + 加煤煮飯 + 打海盜 + 抵港交貨」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+<script>
+(function(){
+'use strict';
+var W=800,H=450,TOTAL=4;
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var $=function(id){return document.getElementById(id);};
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var rand=function(n){return (Math.random()*n)|0;};
+
+var STATIONS=[
+{id:'boiler',x:140,y:300,w:90,h:60,color:'#ff9f6b',label:'BOILER'},
+{id:'galley',x:300,y:300,w:90,h:60,color:'#7de0a0',label:'GALLEY'},
+{id:'cargo',x:470,y:300,w:90,h:60,color:'#ffd23f',label:'CARGO'},
+{id:'wheel',x:640,y:300,w:90,h:60,color:'#7db8ff',label:'WHEEL'}
+];
+var mode='start';
+var captain={x:400,y:270,w:22,h:28,face:1};
+var coal=100,food=100,cargo=5,chips=0,voyage=0,jackpots=0;
+var pirates=[],particles=[],progress=0;
+var shake=0,blink=0,msg='',msgTimer=0,punchCd=0;
+var keys={left:false,right:false};
+var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+var SYMBOLS=['7','★','◆','▲','●'];
+
+var actx=null;
+function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function coin(){beep(880,.05,'sine',.04);}
+function punch(){beep(200,.06,'square',.05);}
+function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*180;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+function addMsg(t){msg=t;msgTimer=1.6;}
+function updateHUD(){
+$('hChips').textContent=chips;
+$('hVoyage').textContent=Math.min(voyage+1,TOTAL)+'/'+TOTAL;
+$('hCoal').textContent=Math.round(coal);
+$('hFood').textContent=Math.round(food);
+$('hCargo').textContent=cargo;
+}
+function resetVoyage(){
+coal=100;food=100;cargo=5;progress=0;pirates=[];captain.x=400;
+addMsg('第 '+(voyage+1)+' 趟航程開始！');updateHUD();
+}
+function resetGame(){
+chips=0;voyage=0;jackpots=0;shake=0;particles=[];
+slot.active=false;slot.pay=null;slot.timer=0;resetVoyage();
+}
+function startGame(){unlockAudio();resetGame();mode='playing';['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});coin();}
+function gameOver(){mode='over';$('finalVoyages').textContent=voyage;$('finalChips').textContent=chips;$('overScreen').classList.remove('hidden');shake=1;beep(120,.35,'sawtooth',.06);}
+function win(){mode='win';$('winScore').textContent=chips+' 籌碼';$('winScreen').classList.remove('hidden');beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);}
+function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;slot.reels=['7','★','◆'];addMsg('JACKPOT 港口獎勵！');}
+
+function stationAt(x){for(var i=0;i<STATIONS.length;i++){var s=STATIONS[i];if(x>=s.x&&x<=s.x+s.w)return s;}return null;}
+function interact(){
+if(mode!=='playing')return;
+var s=stationAt(captain.x);
+if(!s){addMsg('請走到工作站的範圍內');return;}
+if(s.id==='boiler'){coal=Math.min(100,coal+35);beep(440,.07,'triangle',.04);addMsg('加煤！煤量 '+Math.round(coal));}
+else if(s.id==='galley'){food=Math.min(100,food+35);beep(560,.07,'sine',.04);addMsg('煮飯！食物 '+Math.round(food));}
+else if(s.id==='wheel'){progress=Math.min(100,progress+18);beep(660,.08,'square',.04);addMsg('掌舵前進 '+Math.round(progress)+'%');}
+else addMsg('這裡是貨物區，小心海盜！');
+updateHUD();
+}
+function punchPirates(){
+if(mode!=='playing'||punchCd>0)return;
+punchCd=.35;punch();
+for(var i=pirates.length-1;i>=0;i--){
+var p=pirates[i];
+if(Math.abs(p.x-captain.x)<60){pirates.splice(i,1);burst(p.x,p.y,14,'#c8a8f0');beep(880,.08,'square',.05);addMsg('打跑海盜！');}
+}
+}
+function spawnPirate(){pirates.push({x:760,y:270+rand(40),speed:18+rand(14),steal:0});}
+
+function update(dt){
+blink+=dt;shake=Math.max(0,shake-dt*2.5);
+if(msgTimer>0)msgTimer-=dt;
+if(punchCd>0)punchCd-=dt;
+for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+if(slot.active){
+if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+var pay=(a===b&&b===c)?140:((a===b||b===c||a===c)?50:15);
+chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=140?50:18,'#ffd23f');beep(pay>=140?1046:660,.14,'sine',.06);updateHUD();}}
+if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+}
+if(mode!=='playing')return;
+
+if(keys.left)captain.x-=170*dt;
+if(keys.right)captain.x+=170*dt;
+captain.x=clamp(captain.x,40,W-40);
+
+coal-=dt*3.5;food-=dt*2.2;
+if(coal<=0){addMsg('鍋爐熄火！船停滯了…');gameOver();return;}
+if(food<=0){cargo=Math.max(0,cargo-1);food=15;addMsg('乘客餓壞了，丟了一箱貨！');updateHUD();}
+
+// 自動前進（煤充足時）
+progress+=dt*(coal>40?2.2:0.9);
+
+// 海盜
+if(Math.random()<dt*0.35)spawnPirate();
+pirates.forEach(function(p){
+p.x-=p.speed*dt;
+if(p.x<480&&p.steal===0){p.steal=1;cargo=Math.max(0,cargo-1);beep(200,.15,'sawtooth',.05);addMsg('海盜偷走一箱貨！');updateHUD();}
+});
+pirates=pirates.filter(function(p){return p.x>400;});
+
+if(cargo<=0){addMsg('貨物被劫光了！');gameOver();return;}
+if(progress>=100){
+var pay=250+cargo*40;chips+=pay;voyage++;
+burst(W/2,220,30,'#ffd23f');coin();addMsg('抵港！+'+pay+' 籌碼');
+if(voyage%2===0)triggerJackpot();updateHUD();
+if(voyage>=TOTAL){win();}
+else{setTimeout(function(){if(mode==='playing')resetVoyage();},1400);}
+progress=0;
+}
+updateHUD();
+}
+
+function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+fit();window.addEventListener('resize',fit);
+
+function render(){
+ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+// 海面
+var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#12283a');g.addColorStop(.6,'#0e2030');g.addColorStop(1,'#08141e');
+ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+// 波浪
+ctx.strokeStyle='rgba(120,190,220,.2)';ctx.lineWidth=2;
+for(var r=0;r<5;r++){ctx.beginPath();for(var x=0;x<=W;x+=20)ctx.lineTo(x,80+r*45+Math.sin(x*.03+blink*2+r)*6);ctx.stroke();}
+// 船體
+ctx.fillStyle='#4a3020';ctx.fillRect(60,280,680,120);
+ctx.strokeStyle='#c48c46';ctx.lineWidth=3;ctx.strokeRect(60,280,680,120);
+ctx.fillStyle='#6a4830';ctx.fillRect(55,285,690,16);
+// 工作站
+STATIONS.forEach(function(s){
+ctx.fillStyle='rgba(20,28,40,.9)';ctx.fillRect(s.x,s.y,s.w,s.h);
+ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.strokeRect(s.x,s.y,s.w,s.h);
+ctx.fillStyle=s.color;ctx.font='bold 11px ui-monospace,monospace';ctx.textAlign='center';
+ctx.fillText(s.label,s.x+s.w/2,s.y+20);
+ctx.font='22px system-ui';
+var icon={boiler:'🔥',galley:'🍲',cargo:'📦',wheel:'⚓'}[s.id];
+ctx.fillText(icon,s.x+s.w/2,s.y+46);
+});
+// player
+ctx.save();ctx.fillStyle='#e0b890';ctx.beginPath();ctx.arc(captain.x,captain.y-6,10,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#3a2418';ctx.beginPath();ctx.arc(captain.x+captain.face*3,captain.y-8,2.5,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#5a8fc0';ctx.fillRect(captain.x-9,captain.y+2,18,18);ctx.restore();
+// 海盜
+pirates.forEach(function(p){
+ctx.save();ctx.fillStyle='#c8a8f0';ctx.beginPath();ctx.arc(p.x,p.y,13,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#3a1a4a';ctx.beginPath();ctx.arc(p.x,p.y-5,3,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#8a5fb0';ctx.fillRect(p.x-10,p.y+8,20,16);ctx.restore();
+});
+// progress
+ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(240,250,320,10);
+ctx.fillStyle='#7de0a0';ctx.fillRect(240,250,320*progress/100,10);
+ctx.fillStyle='#e0e8f0';ctx.font='bold 11px ui-monospace,monospace';ctx.textAlign='center';
+ctx.fillText('航程 '+Math.round(progress)+'%',400,245);
+particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+ctx.fillStyle='rgba(12,16,26,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+for(var i=0;i<3;i++){var rw=56,rx=px+20+i*(rw+15),ry=py+28;ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#9fd0e8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[i],rx+rw/2,ry+36);}
+if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-26,W,26);ctx.fillStyle='#ffe27a';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-8);ctx.restore();}
+ctx.restore();
+}
+
+var last=performance.now(),acc=0;
+function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var s=1/120,g=0;while(acc>=s&&g++<12){update(s);acc-=s;}render();requestAnimationFrame(frame);}
+
+var KEY={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
+window.addEventListener('keydown',function(e){unlockAudio();if(KEY[e.code]){e.preventDefault();keys[KEY[e.code]]=true;}
+if(e.code==='KeyE')interact();if(e.code==='KeyF')punchPirates();});
+window.addEventListener('keyup',function(e){if(KEY[e.code])keys[KEY[e.code]]=false;});
+canvas.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();var rect=canvas.getBoundingClientRect();var mx=(e.clientX-rect.left)/rect.width*W;
+if(Math.abs(mx-captain.x)<80){punchPirates();}else{captain.x=clamp(mx,40,W-40);interact();}});
+function hold(id,k){var b=$(id);b.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();keys[k]=true;});b.addEventListener('pointerup',function(){keys[k]=false;});b.addEventListener('pointerleave',function(){keys[k]=false;});}
+hold('leftBtn','left');hold('rightBtn','right');
+$('actBtn').addEventListener('click',interact);
+$('punchBtn').addEventListener('click',punchPirates);
+$('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
