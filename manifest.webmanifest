@@ -1,0 +1,19 @@
+{
+  "name": "LightSpin 輕量博弈實驗室",
+  "short_name": "LightSpin",
+  "description": "輕量級 HTML5 Canvas 老虎機示範，展示高效渲染與 SEO/GEO 最佳實踐。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
