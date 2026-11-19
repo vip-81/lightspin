@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="5 軸 3 行滾輪控制器互動範例：展示有限狀態機、200ms 交錯減速停止、向下超調回彈，以及由後端矩陣決定的 landing 對齊邏輯。">
+<title>5×3 滾輪控制器 Demo｜LightSpin</title>
+<link rel="canonical" href="https://vip-81.github.io/lightspin/reel-demo.html">
+<link rel="stylesheet" href="css/style.css">
+<script src="reel-controller.js" defer></script>
+<style>
+  .demo-shell{max-width:760px;margin:0 auto;padding:20px 14px 40px}
+  .demo-shell h1{font-size:clamp(22px,5vw,32px);margin:0 0 8px}
+  .demo-shell .lead{font-size:15px;color:var(--text-muted);max-width:60ch}
+  .reel-stage{position:relative;width:100%;max-width:600px;margin:16px auto;aspect-ratio:5/3;
+    background:#080a1c;border:1px solid rgba(0,229,255,.3);border-radius:12px;overflow:hidden}
+  .reel-stage canvas{width:100%;height:100%;display:block}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:14px 0}
+  .status{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:12px 0}
+  .status div{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+  .status span{display:block;font-size:11px;color:var(--text-muted);letter-spacing:.06em}
+  .status strong{display:block;font-size:14px;color:var(--accent);font-variant-numeric:tabular-nums;margin-top:3px}
+  .note{font-size:13px;line-height:1.8;color:var(--text-muted)}
+  code{font-size:.9em}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳至主要內容</a>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">✦</span><span>LightSpin</span></a>
+    <nav class="site-nav" aria-label="主要導覽">
+      <ul>
+        <li><a href="index.html">首頁</a></li>
+        <li><a href="index.html#works">作品集</a></li>
+        <li><a href="neon-slot-breaker.html">打磚塊</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="demo-shell">
+  <p class="eyebrow">5×3 REEL CONTROLLER</p>
+  <h1>滾輪滾動與停止控制器</h1>
+  <p class="lead">純 JavaScript 邏輯層示範：所有 Reel 先加速捲動，收到後端矩陣後由左至右每隔 200ms 開始減速，停止時向下超調再向上回彈對齊。中獎結果完全由輸入矩陣決定，前端不計算中獎。</p>
+
+  <div class="reel-stage">
+    <canvas id="reelCanvas" width="600" height="360" aria-label="五軸滾輪控制器畫面"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="spinBtn" type="button">SPIN 旋轉</button>
+    <button class="btn btn-ghost" id="stopBtn" type="button">STOP 停止</button>
+    <button class="btn btn-ghost" id="resetBtn" type="button">RESET 重置</button>
+  </div>
+
+  <div class="status" id="status" aria-live="polite"></div>
+
+  <p class="note">
+    狀態機：<code>Idle → SpinUp → LoopScroll → SpinDown → Bounce → ResultShow</code>。<br>
+    停止數學使用三次多項式，同時滿足起點速度連續、終點速度為 0、精確落在整數格；回彈使用 <code>sin²(πt)·e^(-1.5t)</code> 製造向下超調。每軸 <code>phase</code> 可不同步，以實現交錯停止。
+  </p>
+  <p class="note">完整原始碼：<a href="reel-controller.js">reel-controller.js</a> · <a href="index.html">返回首頁</a></p>
+</main>
+
+<script>
+// defer 的外掛会等文件解析完才执行，故此处等 DOMContentLoaded 再初始化。
+document.addEventListener('DOMContentLoaded', function(){
+  'use strict';
+  var canvas=document.getElementById('reelCanvas');
+  var ctx=canvas.getContext('2d');
+  var statusEl=document.getElementById('status');
+  var R=window.ReelController;
+  if(!R){ statusEl.textContent='控制器載入失敗'; return; }
+
+  var ctrl=new R({ symbolHeight:100, minLoopMs:500 });
+  var W=600,H=360,COL=120,CELL=100,TOP=30;
+
+  var RESULTS=[
+    { matrix:[['A','B','C'],['B','C','D'],['E','A','B'],['C','D','A'],['B','B','C']], paylines:[1,3,5] },
+    { matrix:[['7','7','7'],['A','B','C'],['D','E','F'],['B','C','D'],['★','A','B']], paylines:[3] },
+    { matrix:[['◆','A','B'],['●','◆','A'],['7','●','◆'],['★','7','●'],['▲','★','7']], paylines:[2,4,6] }
+  ];
+  var seq=0;
+
+  function fit(){
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  fit();
+  window.addEventListener('resize',fit);
+
+  function draw(frame){
+    ctx.fillStyle='#080a1c';ctx.fillRect(0,0,W,H);
+    for(var i=0;i<frame.reels.length;i++){
+      var r=frame.reels[i];
+      ctx.save();
+      ctx.beginPath();ctx.rect(i*COL,TOP,COL,CELL*3);ctx.clip();
+      for(var j=0;j<r.window.length;j++){
+        var s=r.window[j];
+        var y=TOP+s.y;
+        var palette={'7':'#ff2e88','★':'#ffd23f','◆':'#00e5ff','●':'#b967ff','▲':'#39ff88',
+                     'A':'#8fa6c8','B':'#7de7ff','C':'#ff8ac4','D':'#ffd23f','E':'#39ff88','F':'#b967ff'};
+        ctx.fillStyle='rgba(12,10,34,.96)';
+        ctx.fillRect(i*COL+6,y+3,COL-12,CELL-6);
+        ctx.strokeStyle=(palette[s.symbol]||'#fff');ctx.lineWidth=1;
+        ctx.strokeRect(i*COL+6,y+3,COL-12,CELL-6);
+        ctx.fillStyle=palette[s.symbol]||'#fff';
+        ctx.font='900 42px system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(s.symbol,i*COL+COL/2,y+CELL/2+2);
+      }
+      ctx.restore();
+      ctx.fillStyle=r.phase==='SETTLED'?'#39ff88':'#7de7ff';
+      ctx.font='11px system-ui,sans-serif';ctx.textAlign='center';
+      ctx.fillText(r.phase,i*COL+COL/2,H-8);
+    }
+  }
+
+  function updateStatus(f){
+    var html='<div><span>全局狀態</span><strong>'+f.state+'</strong></div>';
+    for(var i=0;i<f.reels.length;i++){
+      var r=f.reels[i];
+      html+='<div><span>軸 '+i+' · '+r.phase+'</span><strong>'+r.position.toFixed(2)+(r.targetIndex!==null?' / '+r.targetIndex:'')+'</strong></div>';
+    }
+    statusEl.innerHTML=html;
+  }
+
+  var last=performance.now();
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(dt>0.05)dt=0.05;
+    var f=ctrl.update(dt*1000);
+    draw(f);
+    updateStatus(f);
+    requestAnimationFrame(frame);
+  }
+
+  document.getElementById('spinBtn').addEventListener('click',function(){
+    var res=RESULTS[seq++%RESULTS.length];
+    if(ctrl.state==='ResultShow'||ctrl.state==='Idle')ctrl.reset();
+    ctrl.spin({matrix:res.matrix,paylines:res.paylines,token:'demo-'+seq});
+  });
+  document.getElementById('stopBtn').addEventListener('click',function(){ctrl.beginStop();});
+  document.getElementById('resetBtn').addEventListener('click',function(){ctrl.reset();});
+
+  requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>
