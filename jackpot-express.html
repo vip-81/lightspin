@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#07051a">
+<meta name="description" content="黃金末班車：改編自 The Last Route 的 Casino 生存建設小遊戲。火車不停前進、迷霧持續追趕，停站抽老虎機換籌碼、升級車廂，撐得越遠分數越高。">
+<title>黃金末班車 · JACKPOT EXPRESS｜LightSpin</title>
+<style>
+/* ============================================================
+   賽博朋克視覺：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 20% 12%, rgba(255,46,136,.16), transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(0,229,255,.14), transparent 42%),
+    #05030f;
+  color:#e8f6ff;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,880px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.6vw,30px);letter-spacing:.08em;
+   text-shadow:0 0 10px rgba(0,229,255,.85),0 0 26px rgba(255,46,136,.5)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#7de7ff;opacity:.8}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:1px solid rgba(0,229,255,.35);
+  border-radius:12px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(0,229,255,.16),inset 0 0 30px rgba(255,46,136,.07)}
+canvas{display:block;width:100%;height:100%}
+
+/* HUD */
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(0,229,255,.10),rgba(255,46,136,.06));
+  border:1px solid rgba(0,229,255,.22);border-radius:9px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.08em;color:#7de7ff;opacity:.85}
+.hud strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;color:#fff;margin-top:2px}
+.hud .warn strong{color:#ff6b8b}
+
+/* 覆蓋層 */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(10,6,30,.74),rgba(4,2,12,.95))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,38px);letter-spacing:.1em;color:#fff;
+  text-shadow:0 0 14px rgba(255,46,136,.95),0 0 30px rgba(255,46,136,.5)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#a9c6e8;max-width:46ch}
+.big{font-size:32px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:44px;padding:9px 20px;border-radius:10px;font:inherit;
+  font-weight:800;letter-spacing:.08em;border:0;color:#06121a;
+  background:linear-gradient(135deg,#00e5ff,#7df9ff);box-shadow:0 0 16px rgba(0,229,255,.5);
+  transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 26px rgba(0,229,255,.85)}
+button.neon:active{transform:translateY(0)}
+button.pink{background:linear-gradient(135deg,#ff2e88,#ff8ac4);box-shadow:0 0 16px rgba(255,46,136,.5);color:#1a0410}
+button.ghost{background:rgba(255,255,255,.06);color:#e8f6ff;border:1px solid rgba(0,229,255,.35);box-shadow:none}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* 停靠控制面板 */
+#dockPanel{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  display:none;gap:6px;flex-wrap:wrap;justify-content:center;width:96%}
+#dockPanel.show{display:flex}
+#dockPanel button{font-size:11px;min-height:36px;padding:6px 10px}
+
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#8fa6c8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>黃金末班車</h1>
+  <p class="sub">JACKPOT EXPRESS · 邊逃邊賭的生存列車</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="450" aria-label="黃金末班車遊戲畫面"></canvas>
+
+    <!-- 開始畫面 -->
+    <div class="overlay" id="startScreen">
+      <h2>ALL ABOARD</h2>
+      <p>列車永不回頭，<b style="color:#ff6b8b">迷霧</b>正從身後追來。<br>
+         停靠車站按 <b>空白鍵</b> 抽老虎機換籌碼、升級車廂；<br>但停得越久，霧就越近。</p>
+      <button class="neon" id="startBtn">發車</button>
+      <p style="font-size:11px;opacity:.7">空白鍵停靠／出發 · ← → 微調車速 · 觸控點擊畫面亦可</p>
+    </div>
+
+    <!-- 結束畫面 -->
+    <div class="overlay hidden" id="overScreen">
+      <h2>吞沒於霧</h2>
+      <p>本次行驶距離</p>
+      <div class="big" id="finalDist">0 m</div>
+      <p>籌碼 <b id="finalChips">0</b> · 車站 <b id="finalStations">0</b> · 最佳 <b id="bestDist">0</b> m</p>
+      <button class="neon pink" id="againBtn">再開一班</button>
+    </div>
+
+    <!-- 停靠時的操作列 -->
+    <div id="dockPanel">
+      <button class="neon pink" id="spinBtn">SPIN 抽獎</button>
+      <button class="neon ghost" id="buySpinBtn">+2 次 (+40)</button>
+      <button class="neon ghost" id="buyCarBtn">+1 車廂 (+100)</button>
+      <button class="neon ghost" id="boostBtn">加速甩霧 (+25)</button>
+      <button class="neon" id="leaveBtn">出發 Space</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div><span>距離</span><strong id="hDist">0</strong></div>
+    <div><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div class="warn"><span>安全距離</span><strong id="hSafety">100</strong></div>
+    <div><span>車廂</span><strong id="hCars">1</strong></div>
+    <div><span>抽獎次數</span><strong id="hSpins">3</strong></div>
+  </div>
+
+  <p class="tips">靈感取自 Ludum Dare 60 作品《The Last Route》的「不停前進 + 霧追逐 + 停站取resource」機制，改編為 Casino 主題。<b>所有籌碼皆為虛擬</b>，僅供技術示範，不涉及真實博弈。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 450;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+
+  var SYMBOLS = [
+    { s: '7',  c: '#ff2e88', w: 3 },
+    { s: '★', c: '#ffd23f', w: 2 },
+    { s: '◆', c: '#00e5ff', w: 2 },
+    { s: '▲', c: '#39ff88', w: 1 },
+    { s: '●', c: '#b967ff', w: 1 }
+  ];
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand  = function (n) { return (Math.random() * n) | 0; };
+
+  /* ================= 遊戲狀態 ================= */
+  var mode = 'start';           // start | driving | docked | over
+  var distance = 0;             // 行駛距離（公尺）
+  var safety = 100;             // 與霧的距離，0 即被吞沒
+  var chips = 0;                // 籌碼（分數）
+  var stations = 0;             // 已停靠車站
+  var cars = 1;                 // 車廂數（影響派彩倍率）
+  var spins = 3;                // 剩餘抽獎次數
+  var scroll = 0;               // 背景捲動
+  var station = null;           // 目前車站 {x, ready}
+  var nextStationAt = 220;      // 下一站距離
+  var speedTrim = 0;            // 玩家微調車速 -1..1
+  var shake = 0;
+  var fogPulse = 0;
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('jackpotExpressBest') || '0', 10) || 0; } catch (e) {}
+
+  // 老虎機轉輪
+  var reels = [
+    { sym: '7', spinning: false, t: 0, target: '7' },
+    { sym: '★', spinning: false, t: 0, target: '★' },
+    { sym: '◆', spinning: false, t: 0, target: '◆' }
+  ];
+  var pendingPay = null;        // 本次抽獎的得分
+  var needSettle = false;       // 是否有一輪抽獎待結算
+
+  /* ================= 音效（首次手勢解鎖） ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+
+  /* ================= 粒子物件池（金幣雨） ================= */
+  var pool = [];
+  for (var i = 0; i < 180; i++) {
+    pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, color: '#ffd23f', size: 4 });
+  }
+  function burst(x, y, n, color) {
+    var made = 0;
+    for (var i = 0; i < pool.length && made < n; i++) {
+      var p = pool[i]; if (p.active) continue;
+      var a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 260;
+      p.active = true; p.x = x; p.y = y;
+      p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp - 160;
+      p.maxLife = .6 + Math.random() * .6; p.life = p.maxLife;
+      p.color = color || '#ffd23f'; p.size = 3 + Math.random() * 3; made++;
+    }
+  }
+  function updateParticles(dt) {
+    for (var i = 0; i < pool.length; i++) {
+      var p = pool[i]; if (!p.active) continue;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 620 * dt; p.life -= dt;
+      if (p.life <= 0) p.active = false;
+    }
+  }
+
+  /* ================= 流程控制 ================= */
+  function updateHUD() {
+    $('hDist').textContent = Math.floor(distance);
+    $('hChips').textContent = chips;
+    $('hSafety').textContent = Math.ceil(safety);
+    $('hCars').textContent = cars;
+    $('hSpins').textContent = spins;
+    $('spinBtn').disabled = (spins <= 0);
+  }
+  function setDockPanel(show) {
+    $('dockPanel').classList.toggle('show', show);
+  }
+  function startGame() {
+    unlockAudio();
+    mode = 'driving'; distance = 0; safety = 100; chips = 0;
+    stations = 0; cars = 1; spins = 3; scroll = 0; speedTrim = 0;
+    shake = 0; fogPulse = 0; station = null; nextStationAt = 220;
+    pendingPay = null; needSettle = false;
+    reels.forEach(function (r) { r.spinning = false; r.t = 0; });
+    for (var i = 0; i < pool.length; i++) pool[i].active = false;
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    setDockPanel(false);
+    updateHUD();
+    beep(520, .08, 'triangle', .05);
+  }
+  function gameOver() {
+    mode = 'over'; safety = 0;
+    if (distance > best) { best = Math.floor(distance); try { localStorage.setItem('jackpotExpressBest', String(best)); } catch (e) {} }
+    $('finalDist').textContent = Math.floor(distance) + ' m';
+    $('finalChips').textContent = chips;
+    $('finalStations').textContent = stations;
+    $('bestDist').textContent = best;
+    $('overScreen').classList.remove('hidden');
+    setDockPanel(false);
+    shake = 1;
+    beep(120, .35, 'sawtooth', .06);
+  }
+  function dock() {
+    if (mode !== 'driving' || !station || !station.ready) return;
+    mode = 'docked';
+    stations++;
+    station = null;
+    setDockPanel(true);
+    updateHUD();
+    beep(660, .1, 'triangle', .05);
+  }
+  function leave() {
+    if (mode !== 'docked') return;
+    // 必須等轉輪停下且結算完成才能出發
+    if (needSettle || reels.some(function (r) { return r.spinning; })) return;
+    mode = 'driving';
+    safety = Math.min(100, safety + 18);  // 加速甩開霧
+    setDockPanel(false);
+    updateHUD();
+    beep(440, .08, 'square', .045);
+  }
+
+  /* ================= 停靠：老虎機 ================= */
+  function doSpin() {
+    if (mode !== 'docked' || spins <= 0 || reels.some(function (r) { return r.spinning; })) return;
+    spins--;
+    var picks = [];
+    for (var i = 0; i < 3; i++) picks.push(SYMBOLS[rand(SYMBOLS.length)]);
+    reels.forEach(function (r, i) {
+      r.target = picks[i]; r.spinning = true; r.t = 0.30 + i * 0.16;
+    });
+    pendingPay = null; needSettle = true;
+    updateHUD();
+    beep(300, .06, 'square', .035);
+  }
+  function settle() {
+    var a = reels[0].target.s, b = reels[1].target.s, c = reels[2].target.s;
+    var pay = 5 * cars;
+    if (a === b && b === c) pay = 120 * cars;        // 三同：大獎
+    else if (a === b || b === c || a === c) pay = 22 * cars; // 兩同
+    chips += pay;
+    pendingPay = pay;
+    burst(W / 2, H / 2 - 30, pay > 50 ? 60 : 16, '#ffd23f');
+    shake = Math.min(1, shake + (pay > 50 ? .6 : .2));
+    updateHUD();
+    if (pay > 50) { beep(880, .14, 'sine', .06); setTimeout(function () { beep(1174, .2, 'sine', .05); }, 110); }
+    else beep(620, .09, 'triangle', .05);
+  }
+
+  function buySpin()  { if (mode !== 'docked' || chips < 40)  return; chips -= 40;  spins += 2; updateHUD(); beep(740, .07, 'sine', .04); }
+  function buyCar()   { if (mode !== 'docked' || chips < 100) return; chips -= 100; cars++;  updateHUD(); beep(520, .12, 'triangle', .05); }
+  function boost()    { if (mode !== 'docked' || chips < 30)  return; chips -= 30;  safety = Math.min(100, safety + 25); updateHUD(); beep(300, .1, 'sawtooth', .04); }
+
+  /* ================= 物理更新 ================= */
+  function fogSpeed() { return 2.1 + distance / 520; }  // 越遠霧越快
+
+  function update(dt) {
+    updateParticles(dt);
+    shake = Math.max(0, shake - dt * 2.5);
+    fogPulse += dt;
+
+    // 轉輪動畫（停靠時才跑）
+    if (mode === 'docked') {
+      var allStopped = true;
+      reels.forEach(function (r) {
+        if (!r.spinning) return;
+        allStopped = false;
+        r.t -= dt;
+        if (r.t <= 0) { r.spinning = false; r.sym = r.target.s; }
+        else r.sym = SYMBOLS[rand(SYMBOLS.length)].s;
+      });
+      if (needSettle && allStopped) {
+        settle();
+        needSettle = false;
+      }
+    }
+
+    if (mode === 'driving') {
+      distance += (55 + speedTrim * 16) * dt;
+      safety -= fogSpeed() * dt;
+      scroll += 120 * dt;
+
+      // 產生車站
+      if (distance >= nextStationAt && !station) {
+        station = { x: W + 70, ready: false };
+        nextStationAt = distance + 240 + rand(80);
+      }
+      // 車站向左移動（與列車相對）
+      if (station) {
+        station.x -= 120 * dt;
+        if (station.x <= 215 && station.x >= 110) station.ready = true;
+        if (station.x < -60) { station = null; }  // 錯過
+      }
+      if (safety <= 0) gameOver();
+      updateHUD();
+    } else if (mode === 'docked') {
+      safety -= fogSpeed() * 2.1 * dt;   // 停靠時霧逼近更快（核心張力）
+      if (safety <= 0) gameOver();
+      updateHUD();
+    }
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  fit();
+  window.addEventListener('resize', fit);
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+  }
+
+  function drawBackground() {
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#120a33'); g.addColorStop(1, '#07051a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // 遠方霓虹地平線
+    ctx.strokeStyle = 'rgba(0,229,255,.10)'; ctx.lineWidth = 1;
+    for (var i = 0; i < 14; i++) {
+      var x = (i * 64 - scroll * .3) % (W + 64);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 40, 250); ctx.stroke();
+    }
+    // 星星
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    for (var s = 0; s < 40; s++) {
+      var sx = (s * 137.5 - scroll * .12) % W;
+      var sy = 20 + (s * 53) % 150;
+      ctx.fillRect(sx, sy, 1.5, 1.5);
+    }
+    // 遠山剪影
+    ctx.fillStyle = '#0d0a24';
+    ctx.beginPath(); ctx.moveTo(0, 260);
+    for (var m = 0; m <= 10; m++) {
+      ctx.lineTo(m * 90 - (scroll * .4 % 90), 230 + Math.sin(m * 1.7) * 22);
+    }
+    ctx.lineTo(W, 300); ctx.lineTo(0, 300); ctx.fill();
+  }
+
+  function drawTrack() {
+    ctx.fillStyle = '#0a0918'; ctx.fillRect(0, 350, W, 100);
+    ctx.strokeStyle = 'rgba(0,229,255,.35)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, 358); ctx.lineTo(W, 358); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,46,136,.25)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 366); ctx.lineTo(W, 366); ctx.stroke();
+    // 枕木捲動
+    ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 6;
+    for (var t = 0; t < 14; t++) {
+      var tx = t * 70 - (scroll % 70);
+      ctx.beginPath(); ctx.moveTo(tx, 372); ctx.lineTo(tx, 392); ctx.stroke();
+    }
+  }
+
+  function drawTrain() {
+    var baseX = 110, y = 292, carW = 56, gap = 5;
+    // 車頭
+    ctx.save();
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 14;
+    ctx.fillStyle = 'rgba(8,14,34,.98)';
+    roundRect(baseX, y, 86, 52, 7); ctx.fill();
+    ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0,229,255,.35)';
+    ctx.fillRect(baseX + 50, y + 10, 26, 20);
+    ctx.fillStyle = '#ff2e88';
+    ctx.fillRect(baseX + 8, y + 38, 66, 4);
+    ctx.restore();
+
+    // 車廂
+    for (var c = 0; c < cars; c++) {
+      var cx = baseX - 62 - c * (carW + gap);
+      if (cx < -70) continue;
+      ctx.save();
+      ctx.shadowColor = '#ff2e88'; ctx.shadowBlur = 10;
+      ctx.fillStyle = 'rgba(12,8,30,.98)';
+      roundRect(cx, y + 4, carW, 44, 5); ctx.fill();
+      ctx.strokeStyle = '#ff2e88'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,210,63,.45)';
+      for (var w = 0; w < 3; w++) ctx.fillRect(cx + 8 + w * 15, y + 14, 10, 14);
+      ctx.restore();
+    }
+    // 車輪
+    ctx.fillStyle = '#1a2340';
+    for (var q = 0; q < 5; q++) {
+      var wx = baseX + 14 + q * 16;
+      ctx.beginPath(); ctx.arc(wx, 350, 7, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawStation() {
+    if (!station) return;
+    var x = station.x;
+    // 月台
+    ctx.fillStyle = 'rgba(57,255,136,.12)';
+    ctx.fillRect(x, 270, 78, 82);
+    ctx.strokeStyle = station.ready ? '#39ff88' : 'rgba(57,255,136,.5)';
+    ctx.lineWidth = station.ready ? 3 : 1.5;
+    ctx.strokeRect(x, 270, 78, 82);
+    // 建築
+    ctx.fillStyle = '#101a30';
+    ctx.fillRect(x + 8, 208, 62, 62);
+    ctx.strokeStyle = station.ready ? '#39ff88' : '#7de7ff';
+    ctx.lineWidth = 1.5; ctx.strokeRect(x + 8, 208, 62, 62);
+    ctx.fillStyle = station.ready ? '#39ff88' : '#7de7ff';
+    ctx.font = 'bold 10px system-ui,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('STATION', x + 39, 200);
+    if (station.ready) {
+      ctx.font = 'bold 12px system-ui,sans-serif';
+      ctx.fillStyle = '#ffd23f';
+      ctx.fillText('SPACE 停靠', x + 39, 188);
+    }
+  }
+
+  function drawFog() {
+    var ratio = clamp((100 - safety) / 100, 0, 1);
+    var fw = ratio * W * 0.62;
+    if (fw <= 2) return;
+    var g = ctx.createLinearGradient(0, 0, fw, 0);
+    g.addColorStop(0, 'rgba(150,40,120,.92)');
+    g.addColorStop(.6, 'rgba(90,30,100,.62)');
+    g.addColorStop(1, 'rgba(60,20,80,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, fw, H);
+    // 警示脈衝
+    if (ratio > .65) {
+      ctx.save();
+      ctx.globalAlpha = .18 + Math.sin(fogPulse * 6) * .12;
+      ctx.fillStyle = '#ff2e88'; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
+  function drawSlotPanel() {
+    if (mode !== 'docked') return;
+    var pw = 320, ph = 150, px = W / 2 - pw / 2, py = 44;
+    ctx.save();
+    ctx.fillStyle = 'rgba(6,4,20,.92)';
+    roundRect(px, py, pw, ph, 12); ctx.fill();
+    ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.font = 'bold 13px system-ui,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd23f';
+    ctx.fillText('JACKPOT STATION · 倍率 x' + cars, W / 2, py + 22);
+
+    reels.forEach(function (r, i) {
+      var rw = 68, rx = px + 26 + i * (rw + 18), ry = py + 40;
+      ctx.fillStyle = '#0c0a22';
+      roundRect(rx, ry, rw, 74, 8); ctx.fill();
+      var sym = null;
+      for (var k = 0; k < SYMBOLS.length; k++) if (SYMBOLS[k].s === r.sym) sym = SYMBOLS[k];
+      ctx.strokeStyle = sym ? sym.c : '#7de7ff'; ctx.lineWidth = 1.6;
+      ctx.strokeRect(rx, ry, rw, 74);
+      ctx.fillStyle = sym ? sym.c : '#fff';
+      ctx.font = '900 40px system-ui,sans-serif';
+      ctx.fillText(r.sym, rx + rw / 2, ry + 48);
+    });
+    if (pendingPay !== null) {
+      ctx.fillStyle = '#39ff88'; ctx.font = 'bold 16px system-ui,sans-serif';
+      ctx.fillText('+ ' + pendingPay + ' 籌碼', W / 2, py + 134);
+    }
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake * 8, (Math.random() - .5) * shake * 8);
+    drawBackground();
+    drawTrack();
+    drawStation();
+    drawTrain();
+
+    // 粒子
+    for (var i = 0; i < pool.length; i++) {
+      var p = pool[i]; if (!p.active) continue;
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    drawSlotPanel();
+    drawFog();
+
+    // 行駛中的提示
+    if (mode === 'driving') {
+      ctx.fillStyle = 'rgba(125,231,255,.8)'; ctx.font = '12px system-ui,sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('距離 ' + Math.floor(distance) + 'm · 霧 ' + Math.ceil(100 - safety) + '%', 12, 20);
+    }
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last = performance.now(), acc = 0;
+  function frame(now) {
+    var dt = (now - last) / 1000; last = now;
+    if (!isFinite(dt) || dt < 0) dt = 0;
+    if (dt > .05) dt = .05;
+    acc += dt;
+    var step = 1 / 120, guard = 0;
+    while (acc >= step && guard++ < 12) { update(step); acc -= step; }
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  function action() {
+    unlockAudio();
+    if (mode === 'start' || mode === 'over') startGame();
+    else if (mode === 'driving') dock();
+    else if (mode === 'docked') leave();
+  }
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'Space') { e.preventDefault(); action(); }
+    if (e.code === 'ArrowLeft'  || e.code === 'KeyA') speedTrim = -1;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') speedTrim = 1;
+  });
+  window.addEventListener('keyup', function (e) {
+    if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && speedTrim < 0) speedTrim = 0;
+    if ((e.code === 'ArrowRight' || e.code === 'KeyD') && speedTrim > 0) speedTrim = 0;
+  });
+  canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); action(); });
+
+  $('startBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+  $('againBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+  $('spinBtn').addEventListener('click', function (e) { e.stopPropagation(); doSpin(); });
+  $('buySpinBtn').addEventListener('click', function (e) { e.stopPropagation(); buySpin(); });
+  $('buyCarBtn').addEventListener('click', function (e) { e.stopPropagation(); buyCar(); });
+  $('boostBtn').addEventListener('click', function (e) { e.stopPropagation(); boost(); });
+  $('leaveBtn').addEventListener('click', function (e) { e.stopPropagation(); leave(); });
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
