@@ -4,7 +4,7 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Ytdiej7pxZZImPjkEF9MuOEdCKwhpuvb1LTHbHXPlgA=' 'sha256-kf2XmVT7wEeCx71xQAoGqZMYTmtdclINmdonIqroZSA=' 'sha256-rzYNMD8v9fGsojYzk2YgNXJ6/p0yiAsDvf1mD7ttDds=' 'sha256-1jK+foWELjUDWdlhqSVrV6ymCPEZ87slH+7WxwFcD2I=' 'sha256-sfh3EhULBA6y/H+MUbXLOruRP0Ez3m3OIkANKf9DGIc='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Ytdiej7pxZZImPjkEF9MuOEdCKwhpuvb1LTHbHXPlgA=' 'sha256-kf2XmVT7wEeCx71xQAoGqZMYTmtdclINmdonIqroZSA=' 'sha256-rzYNMD8v9fGsojYzk2YgNXJ6/p0yiAsDvf1mD7ttDds=' 'sha256-1jK+foWELjUDWdlhqSVrV6ymCPEZ87slH+7WxwFcD2I=' 'sha256-sfh3EhULBA6y/H+MUbXLOruRP0Ez3m3OIkANKf9DGIc=' 'sha256-Q3VUPMl/PFjMMOjtxYBPwIn8x4tanKDm9/8uB/PY2Yo='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'
 
 # 靜態資源長快取
 /assets/*
