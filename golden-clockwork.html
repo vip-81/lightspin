@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a1418">
+<meta name="description" content="金幣鐘錶匠：改編自 Ludum Dare 60《Clockwork Blue》的 Casino 模擬遊戲。猜測神祕按鈕與曲柄的功能，把時鐘調到指定時間、裝箱出貨賺籌碼，錯誤扣時間、精準出貨觸發 JACKPOT。">
+<title>金幣鐘錶匠 · GOLDEN CLOCKWORK｜LightSpin</title>
+<style>
+/* ============================================================
+   古董鐘錶工坊主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(220,170,80,.12), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(60,140,160,.12), transparent 42%),
+    #060a0e;
+  color:#e8e2d2;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#e8c98a;text-shadow:0 0 10px rgba(220,170,80,.7),0 0 26px rgba(60,140,160,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#9fd0d8;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:1px solid rgba(220,170,80,.35);
+  border-radius:10px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 28px rgba(220,170,80,.14),inset 0 0 36px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(20,16,10,.84),rgba(5,8,10,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#e8c98a;
+  text-shadow:0 0 14px rgba(220,170,80,.8),0 0 30px rgba(60,140,160,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#cfc6ae;max-width:46ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:42px;padding:8px 16px;border-radius:8px;font:inherit;
+  font-weight:800;letter-spacing:.06em;border:1px solid rgba(220,170,80,.5);color:#e8c98a;
+  background:rgba(220,170,80,.12);transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 20px rgba(220,170,80,.4)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+button.neon.act{background:rgba(160,220,230,.14);border-color:rgba(160,220,230,.5);color:#9fd0d8}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(220,170,80,.12),rgba(20,30,34,.1));
+  border:1px solid rgba(220,170,80,.22);border-radius:8px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#9fd0d8}
+.hud strong{display:block;font-size:15px;color:#e8e2d2;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#a89f8c;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>金幣鐘錶匠</h1>
+  <p class="sub">GOLDEN CLOCKWORK · OLD TECH, NEW FORTUNE</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="金幣鐘錶匠遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>CLOCK SHIFT</h2>
+      <p>你是鐘錶匠。神祕的按鈕與曲柄功能要自己猜——<br>
+         把時鐘調到左側桌面時鐘指定的<b style="color:#ffd98a">目標時間</b>，<br>
+         <b style="color:#9fd0d8">裝箱 → 按鈴出貨</b>領籌碼。調錯會扣時間！</p>
+      <button class="neon primary" id="startBtn">開始上班</button>
+      <p style="font-size:11px;opacity:.75">點選按鈕/曲柄調整時鐘 · 完成 10 單過關</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>SHIFT OVER</h2>
+      <p>時間用盡，工坊打烊</p>
+      <p>出貨 <b id="finalShipped">0</b> 件 · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">再上一班</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>MASTER CLOCKMAKER</h2>
+      <p>所有訂單準時交付！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>出貨</span><strong id="hShipped">0/10</strong></div>
+    <div><span>剩餘時間</span><strong id="hTime">60</strong></div>
+    <div><span>連擊</span><strong id="hCombo">x1</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <div class="controls">
+    <button class="neon" id="boxBtn">① 裝箱</button>
+    <button class="neon" id="bellBtn">② 按鈴出貨</button>
+    <button class="neon act" id="hintBtn">③ 提示 (-5s)</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Clockwork Blue》（angry-cyboot 等）的「猜測機構功能 + 調時 + 裝箱出貨」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480, GOAL = 10;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  // 四個神祕控制項：每單隨機決定功能（+1/+5/-1/-5 的小時或分鐘）
+  var CONTROLS = [
+    { label:'A', color:'#ff6b6b' },
+    { label:'B', color:'#ffd23f' },
+    { label:'C', color:'#7de0c8' },
+    { label:'D', color:'#b9a3ff' }
+  ];
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';    // start | playing | over | win
+  var targetH = 0, targetM = 0;   // 目標時間
+  var clockH = 0, clockM = 0;     // 當前時鐘
+  var effects = [];      // 每個控制項的效果
+  var boxed = false;
+  var chips = 0, shipped = 0, combo = 0, jackpots = 0;
+  var timeLeft = 60, shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var discovered = 0;    // 已猜對的控制項數（提示用）
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function ding(){ beep(880,.12,'sine',.05); setTimeout(function(){beep(1174,.18,'sine',.05);},120); }
+
+  /* ================= 關卡 ================= */
+  function newClock() {
+    // 先隨機分配 4 個控制項效果（小時 ±1/±5、分鐘 ±5/±15）
+    var pool = [
+      {type:'h', v:1},{type:'h', v:-1},{type:'h', v:5},{type:'h', v:-5},
+      {type:'m', v:5},{type:'m', v:-5},{type:'m', v:15},{type:'m', v:-15}
+    ];
+    for (var i=pool.length-1;i>0;i--){var j=rand(i+1);var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;}
+    effects = pool.slice(0,4);
+    clockH = rand(12); clockM = rand(12)*5;
+
+    // 關鍵：目標必須「可達」。列舉 4^4 種按鈕組合，從可達狀態中挑目標，
+    // 並排除当前状态本身（確保至少需要操作一次）。否則會出現無解訂單。
+    var reachable = [];
+    var seen = {};
+    for (var a=0;a<4;a++) for (var b=0;b<4;b++) for (var c=0;c<4;c++) for (var d=0;d<4;d++) {
+      var h=clockH, m=clockM;
+      [effects[a],effects[b],effects[c],effects[d]].forEach(function(e){
+        if (e.type==='h') h=(h+e.v+12)%12; else m=(m+e.v+60)%60;
+      });
+      var key=h+':'+m;
+      if (!seen[key] && !(h===clockH && m===clockM)) { seen[key]=true; reachable.push({h:h,m:m}); }
+    }
+    var pick = reachable.length ? reachable[rand(reachable.length)] : {h:(clockH+1)%12,m:clockM};
+    targetH = pick.h; targetM = pick.m;
+    boxed = false; discovered = 0;
+    msg=''; msgTimer=0;
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    chips=0;shipped=0;combo=0;jackpots=0;timeLeft=60;
+    shake=0;slot.active=false;slot.pay=null;slot.timer=0;
+    newClock(); updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); mode='playing'; resetGame();
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    beep(520,.08,'triangle',.05);
+  }
+  function gameOver() {
+    mode='over';
+    $('finalShipped').textContent=shipped;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    ding();
+  }
+  function showMsg(t){msg=t;msgTimer=1.3;}
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hShipped').textContent=shipped+'/'+GOAL;
+    $('hTime').textContent=Math.max(0,Math.ceil(timeLeft));
+    $('hCombo').textContent='x'+Math.max(1,combo);
+    $('hJackpot').textContent=jackpots;
+  }
+
+  /* ================= 交互 ================= */
+  function useControl(i) {
+    if (mode!=='playing'||slot.active||boxed) return;
+    var e=effects[i];
+    if (e.type==='h') clockH=(clockH+e.v+12)%12;
+    else clockM=(clockM+e.v+60)%60;
+    beep(300+i*90,.05,'square',.035);
+    // 記錄是否猜中（用於提示）
+    var correctH = clockH===targetH, correctM = clockM===targetM;
+    if (correctH&&correctM) discovered=4;
+    msg=''; msgTimer=0;
+  }
+  function box() {
+    if (mode!=='playing'||slot.active||boxed) return;
+    boxed=true; beep(420,.08,'triangle',.05);
+    showMsg('已裝箱，按鈴出貨');
+  }
+  function ship() {
+    if (mode!=='playing'||slot.active) return;
+    if (!boxed) { showMsg('先裝箱！'); beep(160,.1,'sawtooth',.04); return; }
+    var ok = (clockH===targetH && clockM===targetM);
+    if (ok) {
+      combo++;
+      var pay = 20*combo;
+      chips+=pay; shipped++;
+      beep(760,.1,'sine',.05); ding();
+      showMsg('精準！+'+pay+' 籌碼');
+      if (shipped%3===0) triggerJackpot();
+      if (shipped>=GOAL) win();
+      if (mode==='playing') newClock();
+    } else {
+      combo=0; timeLeft=Math.max(0,timeLeft-6);
+      shake=.6; beep(150,.25,'sawtooth',.05);
+      showMsg('時間不符！-6 秒');
+      if (timeLeft<=0) gameOver();
+      else newClock();
+    }
+    updateHUD();
+  }
+  function hint() {
+    if (mode!=='playing'||slot.active||timeLeft<=6) return;
+    timeLeft-=5;
+    // 提示：標出一個控制項的正確功能
+    var idx=rand(4);
+    var e=effects[idx];
+    showMsg('提示：'+CONTROLS[idx].label+' → '+(e.type==='h'?'時':'分')+' '+(e.v>0?'+':'')+e.v);
+    beep(660,.08,'sine',.04);
+    updateHUD();
+  }
+  function triggerJackpot() {
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    showMsg('JACKPOT！');
+    updateHUD();
+  }
+
+  /* ================= 粒子 ================= */
+  var particles=[];
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    blink+=dt; shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?80:((a===b||b===c||a===c)?30:10);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=80?50:18,'#ffd23f');
+          beep(pay>=80?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if (mode!=='playing') return;
+    timeLeft-=dt;
+    if(timeLeft<=0){gameOver();return;}
+    updateHUD();
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function drawClockFace(cx,cy,r,h,m,color,label){
+    ctx.save();
+    ctx.fillStyle='rgba(20,18,12,.9)';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    // 刻度
+    ctx.strokeStyle='rgba(232,201,138,.5)';ctx.lineWidth=2;
+    for(var i=0;i<12;i++){var a=i*Math.PI/6;
+      ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*(r-10),cy+Math.sin(a)*(r-10));
+      ctx.lineTo(cx+Math.cos(a)*(r-4),cy+Math.sin(a)*(r-4));ctx.stroke();}
+    // 時針
+    var ha=(h%12)*Math.PI/6-Math.PI/2+m*Math.PI/360;
+    ctx.strokeStyle='#e8c98a';ctx.lineWidth=5;ctx.beginPath();
+    ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ha)*r*.5,cy+Math.sin(ha)*r*.5);ctx.stroke();
+    // 分針
+    var ma=m*Math.PI/30-Math.PI/2;
+    ctx.strokeStyle='#9fd0d8';ctx.lineWidth=3;ctx.beginPath();
+    ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ma)*r*.75,cy+Math.sin(ma)*r*.75);ctx.stroke();
+    ctx.fillStyle='#ffd23f';ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();
+    if(label){ctx.fillStyle=color;ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText(label,cx,cy+r+20);}
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    ctx.fillStyle='#0a1014';ctx.fillRect(0,0,W,H);
+    // 背景工作台紋理
+    ctx.strokeStyle='rgba(220,170,80,.06)';ctx.lineWidth=1;
+    for(var x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // 目標時鐘（桌面時鐘）
+    drawClockFace(150,190,86,targetH,targetM,'#ffd23f','目標時間');
+    // 玩家時鐘
+    drawClockFace(430,190,86,clockH,clockM,'#9fd0d8','你的時鐘');
+
+    // 裝箱狀態
+    ctx.save();
+    ctx.fillStyle=boxed?'rgba(125,224,200,.2)':'rgba(120,120,120,.12)';
+    ctx.strokeStyle=boxed?'#7de0c8':'#6a6a6a';ctx.lineWidth=2;
+    ctx.fillRect(620,110,150,150);ctx.strokeRect(620,110,150,150);
+    ctx.fillStyle=boxed?'#7de0c8':'#8a8a8a';ctx.font='900 40px system-ui';ctx.textAlign='center';
+    ctx.fillText(boxed?'▣':'□',695,190);
+    ctx.font='bold 12px system-ui';ctx.fillText(boxed?'已裝箱':'未裝箱',695,240);
+    ctx.restore();
+
+    // 四個神祕控制項
+    CONTROLS.forEach(function(c,i){
+      var cx=110+i*195, cy=390;
+      ctx.save();
+      ctx.fillStyle='rgba(20,18,14,.9)';ctx.strokeStyle=c.color;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(cx,cy,32,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle=c.color;ctx.font='900 24px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(c.label,cx,cy+1);
+      ctx.restore();
+    });
+
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+
+    // JACKPOT
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px=W/2-pw/2,py=18;
+      ctx.fillStyle='rgba(20,16,8,.96)';ctx.fillRect(px,py,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText('JACKPOT',W/2,py+16);
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px+20+i*(rw+15),ry=py+28;
+        ctx.fillStyle='#0c0a1a';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#9fd0d8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+        ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+      }
+      if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';
+        ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 15px system-ui';ctx.textAlign='center';
+      ctx.fillText(msg,W/2,H-14);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();unlockAudio();
+    var rect=canvas.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)/rect.width*W, my=(e.clientY-rect.top)/rect.height*H;
+    for(var i=0;i<4;i++){
+      var cx=110+i*195,cy=390;
+      if(Math.abs(mx-cx)<34&&Math.abs(my-cy)<34){useControl(i);return;}
+    }
+  });
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    var map={Digit1:0,Digit2:1,Digit3:2,Digit4:3};
+    if(map[e.code]!==undefined)useControl(map[e.code]);
+    if(e.code==='KeyB')box();
+    if(e.code==='Space'){e.preventDefault();ship();}
+  });
+  $('boxBtn').addEventListener('click',function(e){e.stopPropagation();box();});
+  $('bellBtn').addEventListener('click',function(e){e.stopPropagation();ship();});
+  $('hintBtn').addEventListener('click',function(e){e.stopPropagation();hint();});
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
