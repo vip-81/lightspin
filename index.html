@@ -7,9 +7,9 @@
 
   <!-- ==================== 基礎 SEO Meta ==================== -->
   <!-- TODO 上線前：將 vip-81.github.io/lightspin 換成你的正式網域 -->
-  <title>LightSpin 輕量博弈實驗室｜老虎機、打磚塊與 5×3 滾輪控制器</title>
-  <meta name="description" content="LightSpin 開源 HTML5 博弈遊戲實驗站，收錄三款零依賴作品：3 軸 Canvas 老虎機、賽博朋克霓虹打磚塊、5×3 滾輪停止控制器（含超調回彈）。展示 RNG、RTP、FSM、物件池與 60 FPS 渲染，並完整實作 SEO 與 GEO。">
-  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 打磚塊, 5x3 滾輪控制器, 中獎線, Paylines, 超調回彈, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
+  <title>LightSpin 輕量博弈實驗室｜老虎機、打磚塊、滾輪控制器與黃金末班車</title>
+  <meta name="description" content="LightSpin 開源 HTML5 博弈遊戲實驗站，收錄四款零依賴作品：3 軸 Canvas 老虎機、霓虹打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐生存改編）。展示 RNG、RTP、FSM、物件池與 60 FPS 渲染，並完整實作 SEO 與 GEO。">
+  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 打磚塊, 5x3 滾輪控制器, 黃金末班車, 迷霧追逐, 生存建設, 中獎線, Paylines, 超調回彈, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
   <meta name="author" content="LightSpin 開發團隊">
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
   <meta name="googlebot" content="index,follow">
@@ -27,15 +27,15 @@
   <meta property="og:site_name" content="LightSpin 輕量博弈實驗室">
   <meta property="og:locale" content="zh_TW">
   <meta property="og:url" content="https://vip-81.github.io/lightspin/">
-  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜老虎機、打磚塊與 5×3 滾輪控制器">
-  <meta property="og:description" content="三款零依賴 HTML5 Canvas 作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪停止控制器。展示 FSM、物件池、超調回彈與 SEO/GEO 最佳實踐。">
+  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜四款零依賴 HTML5 博弈遊戲">
+  <meta property="og:description" content="四款零依賴 HTML5 Canvas 作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐生存）。展示 FSM、物件池、超調回彈與 SEO/GEO 最佳實踐。">
   <meta property="og:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
   <meta property="og:image:alt" content="LightSpin 老虎機遊戲介面示意圖">
 
   <!-- ==================== Twitter Card ==================== -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜老虎機、打磚塊與 5×3 滾輪控制器">
-  <meta name="twitter:description" content="三款零依賴 HTML5 Canvas 作品：老虎機、霓虹打磚塊、5×3 滾輪控制器，含完整 SEO 與 GEO 最佳實踐。">
+  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜四款零依賴 HTML5 博弈遊戲">
+  <meta name="twitter:description" content="四款零依賴 HTML5 Canvas 作品：老虎機、霓虹打磚塊、5×3 滾輪控制器、黃金末班車，含完整 SEO 與 GEO 最佳實踐。">
   <meta name="twitter:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
 
   <!-- ==================== PWA / 效能 ==================== -->
@@ -124,13 +124,26 @@
         "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
       },
       {
+        "@type": "VideoGame",
+        "@id": "https://vip-81.github.io/lightspin/#jackpot-express",
+        "name": "黃金末班車",
+        "url": "https://vip-81.github.io/lightspin/jackpot-express.html",
+        "description": "改編自 Ludum Dare 60《The Last Route》的 Casino 生存遊戲：列車持續前進、迷霧從後追趕，玩家停站抽老虎機換籌碼、升級車廂，安全距離歸零即結束。支援鍵盤與觸控。",
+        "genre": ["Arcade", "Survival", "Casino"],
+        "inLanguage": "zh-Hant",
+        "isAccessibleForFree": true,
+        "playMode": "SinglePlayer",
+        "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
+      },
+      {
         "@type": "ItemList",
         "@id": "https://vip-81.github.io/lightspin/#works",
         "name": "LightSpin 作品集",
         "itemListElement": [
           { "@type": "ListItem", "position": 1, "name": "3 軸輕量老虎機", "url": "https://vip-81.github.io/lightspin/#demo" },
           { "@type": "ListItem", "position": 2, "name": "霓虹轉盤打磚塊", "url": "https://vip-81.github.io/lightspin/neon-slot-breaker.html" },
-          { "@type": "ListItem", "position": 3, "name": "5×3 滾輪停止控制器", "url": "https://vip-81.github.io/lightspin/reel-demo.html" }
+          { "@type": "ListItem", "position": 3, "name": "5×3 滾輪停止控制器", "url": "https://vip-81.github.io/lightspin/reel-demo.html" },
+          { "@type": "ListItem", "position": 4, "name": "黃金末班車", "url": "https://vip-81.github.io/lightspin/jackpot-express.html" }
         ]
       },
       {
@@ -182,7 +195,7 @@
             "name": "LightSpin 目前有哪些可玩的作品？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "共三款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊（賽博朋克風格、含 JACKPOT 金幣雨）、5×3 滾輪停止控制器（展示交錯停止與超調回彈）。三者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。"
+              "text": "共四款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐生存改編，停站抽老虎機換籌碼）。四者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。"
             }
           }
         ]
@@ -232,7 +245,7 @@
           <p class="eyebrow">開源 · 輕量 · 60 FPS</p>
           <h1 id="hero-title">純 Canvas 打造的輕量博弈遊戲實驗室</h1>
           <p class="lead">
-            LightSpin 收錄三款零依賴 HTML5 作品：3 軸 Canvas 老虎機、賽博朋克霓虹打磚塊，以及 5×3 滾輪停止控制器。
+            LightSpin 收錄四款零依賴 HTML5 作品：3 軸 Canvas 老虎機、霓虹打磚塊、5×3 滾輪停止控制器，以及黃金末班車（迷霧追逐生存）。
             展示有限狀態機、物件池、超調回彈與 60 FPS 渲染，並完整實作 SEO 與生成式引擎優化（GEO）。
           </p>
           <div class="hero-actions">
@@ -288,7 +301,7 @@
       <div class="container">
         <header class="section-head">
           <p class="eyebrow">Our Works</p>
-          <h2 id="works-title">三款零依賴 HTML5 作品</h2>
+          <h2 id="works-title">四款零依賴 HTML5 作品</h2>
           <p>所有作品皆為靜態檔案，無需建置工具或外部 CDN，可同時部署到 GitHub Pages 與 Cloudflare Pages。</p>
         </header>
 
@@ -310,6 +323,12 @@
             <h3>5×3 滾輪停止控制器</h3>
             <p>每幀輸出位移資料的純邏輯層：200ms 交錯減速、三次多項式零速落點、超調回彈；結果由後端矩陣決定，前端不計算中獎。</p>
             <a href="reel-demo.html">查看 Demo <span aria-hidden="true">↗</span></a>
+          </article>
+          <article class="work-card">
+            <span class="work-tag" aria-hidden="true">04 · 生存改編</span>
+            <h3>黃金末班車</h3>
+            <p>改編自 Ludum Dare 60《The Last Route》：列車不停前進、迷霧持續逼近，停站抽老虎機換籌碼、升級車廂。支援鍵盤與觸控的完整生存閉環。</p>
+            <a href="jackpot-express.html">開始逃亡 <span aria-hidden="true">↗</span></a>
           </article>
         </div>
       </div>
@@ -454,7 +473,7 @@
           </details>
           <details>
             <summary>LightSpin 目前有哪些可玩的作品？</summary>
-            <p>共三款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊（賽博朋克風格、含 JACKPOT 金幣雨）、5×3 滾輪停止控制器（展示交錯停止與超調回彈）。三者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。</p>
+            <p>共四款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐生存改編，停站抽老虎機換籌碼）。四者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。</p>
           </details>
         </div>
       </div>
