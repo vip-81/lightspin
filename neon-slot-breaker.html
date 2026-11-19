@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#05030f">
+<title>霓虹轉盤打磚塊｜Neon Slot Breaker</title>
+<style>
+/* ============================================================
+   賽博朋克視覺：全系統字體、無外部圖片、無外部 CDN
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 15% 10%, rgba(255,46,136,.16), transparent 42%),
+    radial-gradient(circle at 85% 25%, rgba(0,229,255,.14), transparent 42%),
+    #05030f;
+  color:#e8f6ff;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;
+  padding:14px 12px 28px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,480px)}
+
+h1{
+  margin:0 0 4px;text-align:center;font-size:clamp(20px,5.5vw,28px);
+  letter-spacing:.08em;
+  color:#fff;
+  text-shadow:0 0 10px rgba(0,229,255,.9),0 0 26px rgba(255,46,136,.55);
+}
+.sub{margin:0 0 12px;text-align:center;font-size:12px;letter-spacing:.18em;color:#7de7ff;opacity:.8}
+
+.stage{
+  position:relative;width:100%;aspect-ratio:2/3;
+  border:1px solid rgba(0,229,255,.38);border-radius:14px;overflow:hidden;
+  box-shadow:0 0 34px rgba(0,229,255,.16),inset 0 0 34px rgba(255,46,136,.08);
+  touch-action:none;
+}
+canvas{display:block;width:100%;height:100%}
+
+/* 開始 / 結束覆蓋層 */
+.overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;text-align:center;
+  padding:24px;
+  background:radial-gradient(circle at 50% 40%,rgba(10,6,30,.72),rgba(4,2,12,.94));
+}
+.overlay.hidden{display:none}
+.overlay h2{
+  margin:0;font-size:clamp(24px,7vw,36px);letter-spacing:.12em;
+  color:#fff;text-shadow:0 0 14px rgba(255,46,136,.95),0 0 32px rgba(255,46,136,.5);
+}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#a9c6e8;max-width:32ch}
+.big-score{font-size:34px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{
+  cursor:pointer;min-height:46px;padding:10px 26px;border-radius:10px;
+  font:inherit;font-weight:800;letter-spacing:.1em;
+  color:#06121a;background:linear-gradient(135deg,#00e5ff,#7df9ff);
+  border:0;box-shadow:0 0 18px rgba(0,229,255,.55);
+  transition:transform .12s ease,box-shadow .2s ease;
+}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 28px rgba(0,229,255,.85)}
+button.neon:active{transform:translateY(0)}
+button.neon.pink{background:linear-gradient(135deg,#ff2e88,#ff8ac4);box-shadow:0 0 18px rgba(255,46,136,.55);color:#1a0410}
+
+/* HUD */
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.hud>div{
+  background:linear-gradient(180deg,rgba(0,229,255,.10),rgba(255,46,136,.06));
+  border:1px solid rgba(0,229,255,.25);border-radius:10px;padding:8px 4px;text-align:center;
+}
+.hud span{display:block;font-size:10px;letter-spacing:.12em;color:#7de7ff;opacity:.85}
+.hud strong{display:block;font-size:18px;font-variant-numeric:tabular-nums;color:#fff;margin-top:2px}
+.tips{margin:12px 2px 0;font-size:12px;line-height:1.7;color:#8fa6c8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>霓虹轉盤打磚塊</h1>
+  <p class="sub">NEON SLOT BREAKER · SLOTS × BREAKOUT</p>
+
+  <div class="stage">
+    <canvas id="game" width="480" height="720" aria-label="霓虹打磚塊遊戲畫面"></canvas>
+
+    <!-- 開始畫面 -->
+    <div class="overlay" id="startScreen">
+      <h2>READY?</h2>
+      <p>移動挡板接住能量球，擊碎老虎機符號磚塊。<br>每 10 塊觸發一次 <b style="color:#ffd23f">JACKPOT</b> 金幣雨！</p>
+      <button class="neon" id="startBtn">開始遊戲</button>
+      <p style="font-size:11px;opacity:.7">空白鍵開始 / 發球 · ← → 或 A D 移動 · 觸屏拖動挡板</p>
+    </div>
+
+    <!-- 結束畫面 -->
+    <div class="overlay hidden" id="overScreen">
+      <h2>GAME OVER</h2>
+      <p>本局得分</p>
+      <div class="big-score" id="finalScore">0</div>
+      <p>最高紀錄：<b id="bestScore">0</b></p>
+      <button class="neon pink" id="againBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div><span>得分</span><strong id="score">0</strong></div>
+    <div><span>生命</span><strong id="lives">3</strong></div>
+    <div><span>連擊</span><strong id="combo">x1</strong></div>
+    <div><span>關卡</span><strong id="level">1</strong></div>
+  </div>
+
+  <p class="tips">符號分值：<b>◆ 120</b> · <b>7 100</b> · <b>★ 80</b> · <b>▲ 90</b> · <b>● 60</b>　連擊疊加倍率，掉落一顆球連擊歸零。</p>
+  <p class="tips" style="opacity:.6">本遊戲為純技術示範，所有分數皆為虛擬，不涉及真實博弈。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數與 DOM ================= */
+  var W = 480, H = 720;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var scoreEl = $('score'), livesEl = $('lives'), comboEl = $('combo'), levelEl = $('level');
+  var startScreen = $('startScreen'), overScreen = $('overScreen');
+
+  var SYMBOLS = [
+    { s: '7',  c: '#ff2e88', pts: 100 },
+    { s: '★', c: '#ffd23f', pts: 80  },
+    { s: '◆', c: '#00e5ff', pts: 120 },
+    { s: '●', c: '#b967ff', pts: 60  },
+    { s: '▲', c: '#39ff88', pts: 90  }
+  ];
+
+  /* ================= 狀態 ================= */
+  var state = 'start';                 // start | playing | over
+  var score = 0, lives = 3, combo = 0, level = 1, destroyed = 0;
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('neonSlotBreakerBest') || '0', 10) || 0; } catch (e) {}
+
+  var paddle = { x: W / 2, y: H - 54, w: 92, h: 14, speed: 480 };
+  var ball   = { x: W / 2, y: H - 74, vx: 0, vy: 0, r: 7, speed: 370, stuck: true };
+  var bricks = [];
+  var texts  = [];
+  var shake = 0, jackpotTimer = 0;
+  var keys = { left: false, right: false };
+  var pointerX = null;
+
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+
+  /* ================= 音效（Web Audio，首次手勢解鎖） ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) actx = new AC();
+      }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime;
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square';
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination);
+      o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+
+  /* ================= 粒子物件池 ================= */
+  var pool = [];
+  for (var i = 0; i < 260; i++) {
+    pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, color: '#fff', coin: false, size: 4 });
+  }
+  function spawn(x, y, color, n, coin) {
+    var made = 0;
+    for (var i = 0; i < pool.length && made < n; i++) {
+      var p = pool[i];
+      if (p.active) continue;
+      var a = Math.random() * Math.PI * 2;
+      var sp = coin ? (120 + Math.random() * 300) : (80 + Math.random() * 240);
+      p.active = true; p.x = x; p.y = y;
+      p.vx = Math.cos(a) * sp;
+      p.vy = Math.sin(a) * sp - (coin ? 220 : 40);
+      p.maxLife = coin ? (0.9 + Math.random() * 0.7) : (0.4 + Math.random() * 0.4);
+      p.life = p.maxLife; p.color = color; p.coin = !!coin;
+      p.size = coin ? (4 + Math.random() * 3) : (2 + Math.random() * 3);
+      made++;
+    }
+  }
+  function updateParticles(dt) {
+    for (var i = 0; i < pool.length; i++) {
+      var p = pool[i];
+      if (!p.active) continue;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vy += 680 * dt;
+      p.life -= dt;
+      if (p.life <= 0) p.active = false;
+    }
+  }
+
+  /* ================= 浮動文字 ================= */
+  function addText(text, x, y, color, life, size) {
+    texts.push({ text: text, x: x, y: y, color: color, life: life || 0.9,
+                 maxLife: life || 0.9, size: size || 16 });
+  }
+  function updateTexts(dt) {
+    for (var i = texts.length - 1; i >= 0; i--) {
+      var t = texts[i];
+      t.y -= 34 * dt; t.life -= dt;
+      if (t.life <= 0) texts.splice(i, 1);
+    }
+  }
+
+  /* ================= 關卡與球 ================= */
+  function buildBricks() {
+    bricks = [];
+    var cols = 7, rows = 5, gap = 6, left = 30, top = 96, bh = 26;
+    var bw = (W - left * 2 - gap * (cols - 1)) / cols;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        bricks.push({
+          x: left + c * (bw + gap), y: top + r * (bh + gap),
+          w: bw, h: bh, sym: SYMBOLS[(r + c) % SYMBOLS.length],
+          alive: true, flash: 0
+        });
+      }
+    }
+  }
+  function resetBall() {
+    ball.stuck = true;
+    ball.x = paddle.x; ball.y = paddle.y - ball.r - 2;
+    ball.vx = 0; ball.vy = 0;
+  }
+  function launch() {
+    if (!ball.stuck || state !== 'playing') return;
+    ball.stuck = false;
+    var a = -Math.PI / 2 + (Math.random() - 0.5) * 0.7;
+    ball.vx = Math.cos(a) * ball.speed;
+    ball.vy = Math.sin(a) * ball.speed;
+    beep(660, 0.06, 'triangle', 0.05);
+  }
+
+  /* ================= 遊戲流程 ================= */
+  function updateHUD() {
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+    comboEl.textContent = 'x' + Math.max(1, combo);
+    levelEl.textContent = level;
+  }
+  function startGame() {
+    unlockAudio();
+    score = 0; lives = 3; combo = 0; level = 1; destroyed = 0;
+    shake = 0; jackpotTimer = 0; texts.length = 0;
+    for (var i = 0; i < pool.length; i++) pool[i].active = false;
+    paddle.x = W / 2; ball.speed = 370;
+    buildBricks(); resetBall();
+    state = 'playing';
+    startScreen.classList.add('hidden');
+    overScreen.classList.add('hidden');
+    updateHUD();
+  }
+  function triggerJackpot() {
+    var bonus = 500 * level;
+    score += bonus; jackpotTimer = 1.6; shake = 1;
+    addText('JACKPOT +' + bonus, W / 2, H / 2 - 40, '#ffd23f', 2.0, 30);
+    spawn(W / 2, H / 2 - 20, '#ffd23f', 70, true);
+    beep(880, 0.16, 'sine', 0.06);
+    setTimeout(function () { beep(1174, 0.22, 'sine', 0.06); }, 110);
+    updateHUD();
+  }
+  function levelUp() {
+    level++;
+    score += 1000;
+    ball.speed = Math.min(620, ball.speed + 28);
+    buildBricks(); resetBall();
+    addText('LEVEL ' + level, W / 2, H / 2 - 40, '#00e5ff', 1.8, 28);
+    beep(1046, 0.18, 'triangle', 0.05);
+    updateHUD();
+  }
+  function loseLife() {
+    lives--; combo = 0; shake = 0.8;
+    beep(160, 0.28, 'sawtooth', 0.05);
+    if (lives <= 0) {
+      state = 'over';
+      if (score > best) {
+        best = score;
+        try { localStorage.setItem('neonSlotBreakerBest', String(best)); } catch (e) {}
+      }
+      $('finalScore').textContent = score;
+      $('bestScore').textContent = best;
+      overScreen.classList.remove('hidden');
+    } else {
+      resetBall();
+    }
+    updateHUD();
+  }
+
+  /* ================= 物理更新（固定步長） ================= */
+  function update(dt) {
+    updateParticles(dt);
+    updateTexts(dt);
+    shake = Math.max(0, shake - dt * 3);
+    jackpotTimer = Math.max(0, jackpotTimer - dt);
+    for (var b = 0; b < bricks.length; b++) {
+      if (bricks[b].flash > 0) bricks[b].flash = Math.max(0, bricks[b].flash - dt * 5);
+    }
+    if (state !== 'playing') return;
+
+    // 挡板：鍵盤 + 觸屏指針追蹤
+    if (keys.left)  paddle.x -= paddle.speed * dt;
+    if (keys.right) paddle.x += paddle.speed * dt;
+    if (pointerX !== null) {
+      var target = clamp(pointerX, paddle.w / 2, W - paddle.w / 2);
+      paddle.x += (target - paddle.x) * Math.min(1, dt * 18);
+    }
+    paddle.x = clamp(paddle.x, paddle.w / 2, W - paddle.w / 2);
+
+    if (ball.stuck) {
+      ball.x = paddle.x; ball.y = paddle.y - ball.r - 2;
+      return;
+    }
+
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+
+    // 牆壁反彈
+    if (ball.x - ball.r < 0)  { ball.x = ball.r;     ball.vx =  Math.abs(ball.vx); beep(300, 0.03, 'square', 0.025); }
+    if (ball.x + ball.r > W)  { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); beep(300, 0.03, 'square', 0.025); }
+    if (ball.y - ball.r < 0)  { ball.y = ball.r;     ball.vy =  Math.abs(ball.vy); beep(300, 0.03, 'square', 0.025); }
+    if (ball.y + ball.r > H)  { loseLife(); return; }
+
+    // 挡板反彈：依撞擊位置改變角度
+    if (ball.vy > 0 &&
+        ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
+        ball.x >= paddle.x - paddle.w / 2 - ball.r &&
+        ball.x <= paddle.x + paddle.w / 2 + ball.r) {
+      ball.y = paddle.y - ball.r;
+      var off = clamp((ball.x - paddle.x) / (paddle.w / 2), -1, 1);
+      var ang = off * 1.05;
+      ball.vx = Math.sin(ang) * ball.speed;
+      ball.vy = -Math.cos(ang) * ball.speed;
+      combo = 0; updateHUD();
+      beep(360, 0.05, 'triangle', 0.04);
+    }
+
+    // 磚塊碰撞（圓 vs 矩形）
+    for (var i = 0; i < bricks.length; i++) {
+      var br = bricks[i];
+      if (!br.alive) continue;
+      var cx = clamp(ball.x, br.x, br.x + br.w);
+      var cy = clamp(ball.y, br.y, br.y + br.h);
+      var dx = ball.x - cx, dy = ball.y - cy;
+      if (dx * dx + dy * dy >= ball.r * ball.r) continue;
+
+      var ox = Math.min(ball.x + ball.r - br.x, br.x + br.w - (ball.x - ball.r));
+      var oy = Math.min(ball.y + ball.r - br.y, br.y + br.h - (ball.y - ball.r));
+      if (ox < oy) ball.vx = -ball.vx; else ball.vy = -ball.vy;
+
+      br.alive = false; br.flash = 1;
+      combo++;
+      var gain = br.sym.pts * Math.max(1, combo);
+      score += gain; destroyed++;
+      spawn(br.x + br.w / 2, br.y + br.h / 2, br.sym.color, 12, false);
+      addText('+' + gain, br.x + br.w / 2, br.y, br.sym.color, 0.8, 15);
+      shake = Math.min(1, shake + 0.22);
+      beep(500 + Math.min(combo, 12) * 35, 0.05, 'square', 0.035);
+      if (destroyed % 10 === 0) triggerJackpot();
+      if (bricks.every(function (x) { return !x.alive; })) levelUp();
+      updateHUD();
+      break; // 同一幀只處理一塊，避免反彈混亂
+    }
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  fit();
+  window.addEventListener('resize', fit);
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function render() {
+    ctx.save();
+    // 背景與霓虹格線
+    ctx.fillStyle = '#07051a'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(0,229,255,0.055)'; ctx.lineWidth = 1;
+    for (var y = 0; y <= H; y += 36) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    for (var x = 0; x <= W; x += 36) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+
+    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake * 9, (Math.random() - 0.5) * shake * 9);
+
+    // 磚塊
+    for (var i = 0; i < bricks.length; i++) {
+      var b = bricks[i];
+      if (!b.alive) continue;
+      ctx.save();
+      ctx.shadowColor = b.sym.c; ctx.shadowBlur = 10;
+      ctx.fillStyle = b.flash > 0 ? '#ffffff' : 'rgba(12,10,34,0.96)';
+      roundRect(b.x, b.y, b.w, b.h, 5); ctx.fill();
+      ctx.strokeStyle = b.sym.c; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = b.sym.c;
+      ctx.font = '900 17px system-ui,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.sym.s, b.x + b.w / 2, b.y + b.h / 2 + 1);
+      ctx.restore();
+    }
+
+    // 挡板
+    ctx.save();
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 18;
+    var grad = ctx.createLinearGradient(paddle.x - paddle.w / 2, 0, paddle.x + paddle.w / 2, 0);
+    grad.addColorStop(0, '#ff2e88'); grad.addColorStop(0.5, '#00e5ff'); grad.addColorStop(1, '#ff2e88');
+    ctx.fillStyle = grad;
+    roundRect(paddle.x - paddle.w / 2, paddle.y, paddle.w, paddle.h, 7); ctx.fill();
+    ctx.restore();
+
+    // 球
+    ctx.save();
+    ctx.shadowColor = '#9df9ff'; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // 粒子
+    for (var p = 0; p < pool.length; p++) {
+      var q = pool[p];
+      if (!q.active) continue;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, q.life / q.maxLife);
+      ctx.shadowColor = q.color; ctx.shadowBlur = q.coin ? 12 : 6;
+      ctx.fillStyle = q.color;
+      if (q.coin) {
+        ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff8c4'; ctx.lineWidth = 1; ctx.stroke();
+      } else {
+        ctx.fillRect(q.x - q.size / 2, q.y - q.size / 2, q.size, q.size);
+      }
+      ctx.restore();
+    }
+
+    // 浮動文字
+    for (var t = 0; t < texts.length; t++) {
+      var tx = texts[t];
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, tx.life / tx.maxLife);
+      ctx.shadowColor = tx.color; ctx.shadowBlur = 14;
+      ctx.fillStyle = tx.color;
+      ctx.font = '900 ' + tx.size + 'px system-ui,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(tx.text, tx.x, tx.y);
+      ctx.restore();
+    }
+
+    // JACKPOT 橫幅
+    if (jackpotTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, jackpotTimer * 2);
+      ctx.fillStyle = 'rgba(255,210,63,0.10)'; ctx.fillRect(0, H / 2 - 70, W, 140);
+      ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, H / 2 - 70); ctx.lineTo(W, H / 2 - 70);
+      ctx.moveTo(0, H / 2 + 70); ctx.lineTo(W, H / 2 + 70); ctx.stroke();
+      ctx.fillStyle = '#ffd23f';
+      ctx.font = '900 30px system-ui,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 20;
+      ctx.fillText('JACKPOT!', W / 2, H / 2);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈（固定步長避免穿透） ================= */
+  var last = performance.now(), acc = 0;
+  function frame(now) {
+    var dt = (now - last) / 1000;
+    last = now;
+    if (!isFinite(dt) || dt < 0) dt = 0;
+    if (dt > 0.05) dt = 0.05; // 分頁背景切回時不跳幀
+    acc += dt;
+    var step = 1 / 120;
+    var guard = 0;
+    while (acc >= step && guard++ < 12) { update(step); acc -= step; }
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入：鍵盤 / 觸控 / 滑鼠 ================= */
+  window.addEventListener('keydown', function (e) {
+    unlockAudio();
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (state === 'start' || state === 'over') startGame();
+      else if (state === 'playing') launch();
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  });
+
+  function pointerToX(e) {
+    var rect = canvas.getBoundingClientRect();
+    return (e.clientX - rect.left) / rect.width * W;
+  }
+  canvas.addEventListener('pointermove', function (e) {
+    if (state === 'playing') { pointerX = pointerToX(e); e.preventDefault(); }
+  });
+  canvas.addEventListener('pointerdown', function (e) {
+    unlockAudio();
+    if (state === 'start' || state === 'over') { startGame(); return; }
+    if (state === 'playing') { pointerX = pointerToX(e); launch(); e.preventDefault(); }
+  });
+  canvas.addEventListener('pointerleave', function () { pointerX = null; });
+
+  $('startBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+  $('againBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+
+  /* ================= 初始化 ================= */
+  buildBricks(); resetBall(); updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
