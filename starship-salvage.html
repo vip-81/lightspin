@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e18">
+<meta name="description" content="星艦回收站：改編自 Ludum Dare 60《Fresh Salvage》的 Casino 商業模擬遊戲。低買高賣老舊星艦、拆解零件、修理耐久、升級品質，到拍賣場獲利，品質倍率決定成敗。">
+<title>星艦回收站 · STARSHIP SALVAGE｜LightSpin</title>
+<style>
+/* ============================================================
+   太空回收場主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(80,120,220,.14), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(200,80,160,.10), transparent 42%),
+    #05070e;
+  color:#e0e8f0;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#9fb8f0;text-shadow:0 0 10px rgba(80,120,220,.7),0 0 26px rgba(200,80,160,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(120,150,220,.35);
+  border-radius:8px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(80,120,220,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(14,14,34,.88),rgba(4,4,12,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fb8f0;
+  text-shadow:0 0 14px rgba(80,120,220,.8),0 0 30px rgba(200,80,160,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2cee0;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;
+  font-weight:800;letter-spacing:.03em;border:2px solid rgba(120,150,220,.5);color:#9fb8f0;
+  background:rgba(80,120,220,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon:disabled{opacity:.4;cursor:not-allowed;transform:none}
+button.neon.primary{background:linear-gradient(135deg,#5a8fe0,#9fb8f0);color:#081824;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(80,120,220,.12),rgba(20,20,40,.1));
+  border:1px solid rgba(120,150,220,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0e8f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.panels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.panel{background:rgba(16,18,36,.7);border:1px solid rgba(120,150,220,.2);border-radius:6px;padding:10px;font-size:12px;line-height:1.8;color:#b8c4dc}
+.panel h3{margin:0 0 6px;font-size:12px;color:#cdb894;letter-spacing:.06em}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a4bb;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>星艦回收站</h1>
+  <p class="sub">STARSHIP SALVAGE · BUY LOW, SELL HIGH</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="450" aria-label="星艦回收站遊戲畫面"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>FRESH SALVAGE</h2>
+      <p>在報廢場買下老舊星艦，<b style="color:#9fb8f0">拆解零件</b>、<b style="color:#7de0a0">修理耐久</b>、<b style="color:#ffd23f">升級品質</b>，<br>再把翻新好的船送到拍賣場。<br><b>低買高賣</b>——品質倍率決定利潤！</p>
+      <button class="neon primary" id="startBtn">開業</button>
+      <p style="font-size:11px;opacity:.75">5 輪交易，資金目標 2000 籌碼</p>
+    </div>
+    <div class="overlay hidden" id="overScreen">
+      <h2>BANKRUPT</h2>
+      <p>資金不足，回收站倒閉</p>
+      <p>完成交易 <b id="finalDeals">0</b> · 資金 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新開業</button>
+    </div>
+    <div class="overlay hidden" id="winScreen">
+      <h2>TOP-TIER DEALER</h2>
+      <p>你成了星艦回收大亨！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>資金</span><strong id="hChips">500</strong></div>
+    <div><span>交易</span><strong id="hDeals">0/5</strong></div>
+    <div><span>目標</span><strong id="hTarget">2000</strong></div>
+    <div><span>零件</span><strong id="hScrap">0</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel" id="shipPanel"><h3>🚀 當前船艦</h3>尚無船艦</div>
+    <div class="panel" id="marketPanel"><h3>📈 市場</h3>等待交易…</div>
+    <div class="panel" id="logPanel"><h3>📜 日誌</h3>等待開業…</div>
+  </div>
+
+  <div class="controls">
+    <button class="neon" id="buyBtn">① 買舊船 (100)</button>
+    <button class="neon" id="scrapBtn">② 拆解零件</button>
+    <button class="neon" id="repairBtn">③ 修理耐久</button>
+    <button class="neon" id="qualityBtn">④ 升級品質 (60)</button>
+    <button class="neon gold" id="sellBtn">⑤ 拍賣賣出</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Fresh Salvage》（Bobap）的「低買高賣 + 拆解修理 + 品質倍率」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var W=800,H=450,GOAL=5,TARGET=2000;
+  var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+  var $=function(id){return document.getElementById(id);};
+  var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+  var rand=function(n){return (Math.random()*n)|0;};
+
+  var QUALITY=[
+    {name:'Budget', mult:0.7, color:'#8a8a9a'},
+    {name:'Standard', mult:1.0, color:'#7db8ff'},
+    {name:'Luxury', mult:1.5, color:'#ffd23f'}
+  ];
+  var SHIP_NAMES=['老鏽號','星塵號','商隊號','先鋒號','晨曦號','流浪者號'];
+
+  var mode='start';
+  var chips=500,deals=0,jackpots=0,scrap=0;
+  var ship=null;   // {name,base,durability,maxDur,quality,parts}
+  var logs=[];
+  var shake=0,blink=0,msg='',msgTimer=0;
+  var particles=[];
+  var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+  var SYMBOLS=['7','★','◆','▲','●'];
+
+  var actx=null;
+  function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+  function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+  function coin(){beep(880,.05,'sine',.04);}
+  function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*180;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+  function addLog(t){logs.unshift(t);if(logs.length>5)logs.pop();$('logPanel').innerHTML='<h3>📜 日誌</h3>'+logs.map(function(l){return '· '+l;}).join('<br>');}
+  function addMsg(t){msg=t;msgTimer=1.8;}
+
+  function resetGame(){
+    chips=500;deals=0;jackpots=0;scrap=0;ship=null;logs=[];shake=0;
+    particles=[];slot.active=false;slot.pay=null;slot.timer=0;
+    $('shipPanel').innerHTML='<h3>🚀 當前船艦</h3>尚無船艦';
+    $('marketPanel').innerHTML='<h3>📈 市場</h3>等待交易…';
+    addLog('回收站開業，資金 500');updateHUD();
+  }
+  function startGame(){unlockAudio();resetGame();mode='playing';
+    ['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});coin();}
+  function gameOver(){mode='over';$('finalDeals').textContent=deals;$('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');shake=1;beep(160,.3,'sawtooth',.05);}
+  function win(){mode='win';$('winScore').textContent=chips+' 籌碼';$('winScreen').classList.remove('hidden');
+    beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);}
+  function updateHUD(){
+    $('hChips').textContent=chips;$('hDeals').textContent=deals+'/'+GOAL;
+    $('hScrap').textContent=scrap;$('hJackpot').textContent=jackpots;
+  }
+  function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];addMsg('JACKPOT 交易獎勵！');updateHUD();}
+
+  function buy(){
+    if(mode!=='playing'||ship)return;
+    if(chips<100){addMsg('資金不足！');return;}
+    chips-=100;
+    var base=120+rand(120);           // 基底價值 120~240
+    var maxDur=40+rand(60);           // 最大耐久 40~100
+    // 買來的舊船有磨損（耐久 50%~95%），因此需要拆解零件來修理——原作核心循環
+    var dur=Math.max(10,Math.floor(maxDur*(0.5+Math.random()*0.45)));
+    ship={name:SHIP_NAMES[rand(SHIP_NAMES.length)],base:base,durability:dur,maxDur:maxDur,
+          quality:QUALITY[rand(QUALITY.length)],parts:0};
+    addMsg('買下「'+ship.name+'」，耐久 '+dur+'/'+maxDur+'（需修理！）');coin();
+    $('shipPanel').innerHTML='<h3>🚀 '+ship.name+'</h3>基地價值 '+base+'<br>耐久 '+dur+'/'+maxDur+'<br>品質 <span style="color:'+ship.quality.color+'">'+ship.quality.name+'</span>';
+    $('marketPanel').innerHTML='<h3>📈 市場行情</h3>估值 <b>'+estimate()+'</b><br>品質倍率 ×'+ship.quality.mult;
+    updateHUD();
+  }
+  function estimate(){
+    if(!ship)return 0;
+    var durRatio=ship.durability/ship.maxDur;
+    return Math.round(ship.base*(0.4+0.6*durRatio)*ship.quality.mult);
+  }
+  function scrapShip(){
+    if(mode!=='playing'||!ship)return;
+    if(ship.parts>0){addMsg('已拆解過！');return;}
+    var gain=ship.base/8;
+    scrap+=Math.round(gain);ship.parts=1;
+    addMsg('拆解獲得 '+Math.round(gain)+' 零件（ scrap 可用於修理 ）');coin();
+    updateHUD();
+  }
+  function repair(){
+    if(mode!=='playing'||!ship)return;
+    var need=ship.maxDur-ship.durability;
+    if(need<=0){addMsg('耐久已滿！');return;}
+    if(scrap<need){addMsg('零件不足，需要 '+need);return;}
+    scrap-=need;ship.durability=ship.maxDur;
+    addMsg('修理完成，耐久回滿！');coin();
+    $('marketPanel').innerHTML='<h3>📈 市場行情</h3>估值 <b>'+estimate()+'</b><br>品質倍率 ×'+ship.quality.mult;
+    updateHUD();
+  }
+  function upgrade(){
+    if(mode!=='playing'||!ship)return;
+    if(chips<60){addMsg('資金不足！');return;}
+    if(ship.quality.name==='Luxury'){addMsg('已是最高品質！');return;}
+    chips-=60;
+    var idx=QUALITY.indexOf(ship.quality);
+    ship.quality=QUALITY[Math.min(idx+1,QUALITY.length-1)];
+    addMsg('品質升級為 '+ship.quality.name+'！');coin();
+    $('shipPanel').innerHTML='<h3>🚀 '+ship.name+'</h3>基地價值 '+ship.base+'<br>耐久 '+ship.durability+'<br>品質 <span style="color:'+ship.quality.color+'">'+ship.quality.name+'</span>';
+    $('marketPanel').innerHTML='<h3>📈 市場行情</h3>估值 <b>'+estimate()+'</b><br>品質倍率 ×'+ship.quality.mult;
+    updateHUD();
+  }
+  function sell(){
+    if(mode!=='playing'||!ship)return;
+    var price=estimate();
+    chips+=price;deals++;
+    burst(W/2,220,24,'#ffd23f');coin();
+    addMsg('拍賣成交！+'+price+' 籌碼');
+    if(deals%2===0)triggerJackpot();
+    ship=null;
+    $('shipPanel').innerHTML='<h3>🚀 當前船艦</h3>尚無船艦';
+    $('marketPanel').innerHTML='<h3>📈 市場</h3>等待交易…';
+    updateHUD();
+    if(chips>=TARGET){win();}
+    else if(deals>=GOAL){gameOver();}
+  }
+
+  function update(dt){
+    blink+=dt;shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+    if(slot.active){
+      if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?150:((a===b||b===c||a===c)?60:20);
+          chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=150?50:18,'#ffd23f');
+          beep(pay>=150?1046:660,.14,'sine',.06);updateHUD();}}
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+    if(mode!=='playing')return;
+    if(chips<100&&!ship){gameOver();}
+  }
+
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function render(){
+    ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    // 星空背景
+    var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a1028');g.addColorStop(1,'#060814');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    for(var i=0;i<60;i++){var sx=(i*137+blink*10)%W,sy=(i*89)%H;ctx.fillStyle='rgba(255,255,255,'+(0.2+Math.sin(i)*0.15)+')';ctx.fillRect(sx,sy,1.5,1.5);}
+    // 行星
+    ctx.fillStyle='#2a3a6a';ctx.beginPath();ctx.arc(680,120,90,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(120,160,255,.2)';ctx.beginPath();ctx.arc(660,100,30,0,Math.PI*2);ctx.fill();
+    // 船塢平台
+    ctx.fillStyle='#1a2038';ctx.fillRect(80,330,640,90);
+    ctx.strokeStyle='#4a5a88';ctx.lineWidth=2;ctx.strokeRect(80,330,640,90);
+    // 船艦
+    if(ship){
+      ctx.save();ctx.translate(400,270);
+      ctx.fillStyle='#3a4a6a';ctx.beginPath();ctx.moveTo(-90,0);ctx.lineTo(60,-30);ctx.lineTo(100,0);ctx.lineTo(60,30);ctx.closePath();ctx.fill();
+      ctx.strokeStyle=ship.quality.color;ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle='#7db8ff';ctx.beginPath();ctx.arc(-30,0,12,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#ff6b6b';ctx.fillRect(70,-6,20,12);
+      ctx.fillStyle=ship.quality.color;ctx.font='bold 14px system-ui';ctx.textAlign='center';
+      ctx.fillText(ship.name,0,-44);
+      ctx.restore();
+    }
+    // 估值面板
+    if(ship){
+      ctx.fillStyle='#ffd23f';ctx.font='bold 16px ui-monospace,monospace';ctx.textAlign='left';
+      ctx.fillText('估值 '+estimate()+'  |  零件 '+scrap,24,40);
+    }
+    particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+    if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+      ctx.fillStyle='rgba(10,12,26,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+      for(var k=0;k<3;k++){var rw=56,rx=px+20+k*(rw+15),ry=py+28;ctx.fillStyle='#0c1020';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#9fb8f0';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[k],rx+rw/2,ry+36);}
+      if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-26,W,26);ctx.fillStyle='#ffe27a';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-8);ctx.restore();}
+    ctx.restore();
+  }
+
+  var last=performance.now(),acc=0;
+  function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var s=1/120,g=0;while(acc>=s&&g++<12){update(s);acc-=s;}render();requestAnimationFrame(frame);}
+
+  $('buyBtn').addEventListener('click',buy);
+  $('scrapBtn').addEventListener('click',scrapShip);
+  $('repairBtn').addEventListener('click',repair);
+  $('qualityBtn').addEventListener('click',upgrade);
+  $('sellBtn').addEventListener('click',sell);
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
