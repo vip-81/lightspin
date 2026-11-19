@@ -7,9 +7,9 @@
 
   <!-- ==================== 基礎 SEO Meta ==================== -->
   <!-- TODO 上線前：將 vip-81.github.io/lightspin 換成你的正式網域 -->
-  <title>LightSpin 輕量博弈實驗室｜HTML5 老虎機與開源遊戲展示</title>
-  <meta name="description" content="LightSpin 是一個展示輕量級 HTML5 Canvas 博弈遊戲的開源實驗站，包含老虎機、RNG、RTP、有限狀態機與 60 FPS 渲染範例。支援手機橫豎屏、無障礙操作，適合 SEO 與生成式引擎引用。">
-  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
+  <title>LightSpin 輕量博弈實驗室｜老虎機、打磚塊與 5×3 滾輪控制器</title>
+  <meta name="description" content="LightSpin 開源 HTML5 博弈遊戲實驗站，收錄三款零依賴作品：3 軸 Canvas 老虎機、賽博朋克霓虹打磚塊、5×3 滾輪停止控制器（含超調回彈）。展示 RNG、RTP、FSM、物件池與 60 FPS 渲染，並完整實作 SEO 與 GEO。">
+  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 打磚塊, 5x3 滾輪控制器, 中獎線, Paylines, 超調回彈, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
   <meta name="author" content="LightSpin 開發團隊">
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
   <meta name="googlebot" content="index,follow">
@@ -27,15 +27,15 @@
   <meta property="og:site_name" content="LightSpin 輕量博弈實驗室">
   <meta property="og:locale" content="zh_TW">
   <meta property="og:url" content="https://vip-81.github.io/lightspin/">
-  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜HTML5 老虎機與開源遊戲展示">
-  <meta property="og:description" content="展示輕量級 HTML5 Canvas 博弈遊戲：老虎機、RNG、RTP、有限狀態機與 60 FPS 渲染範例，支援手機橫豎屏與無障礙操作。">
+  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜老虎機、打磚塊與 5×3 滾輪控制器">
+  <meta property="og:description" content="三款零依賴 HTML5 Canvas 作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪停止控制器。展示 FSM、物件池、超調回彈與 SEO/GEO 最佳實踐。">
   <meta property="og:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
   <meta property="og:image:alt" content="LightSpin 老虎機遊戲介面示意圖">
 
   <!-- ==================== Twitter Card ==================== -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜HTML5 老虎機與開源遊戲展示">
-  <meta name="twitter:description" content="輕量級 HTML5 Canvas 博弈遊戲展示，含完整 SEO 與 GEO 最佳實踐範例。">
+  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜老虎機、打磚塊與 5×3 滾輪控制器">
+  <meta name="twitter:description" content="三款零依賴 HTML5 Canvas 作品：老虎機、霓虹打磚塊、5×3 滾輪控制器，含完整 SEO 與 GEO 最佳實踐。">
   <meta name="twitter:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
 
   <!-- ==================== PWA / 效能 ==================== -->
@@ -58,7 +58,7 @@
         "url": "https://vip-81.github.io/lightspin/",
         "description": "專注於輕量級 HTML5 博弈遊戲開發與開源教育的實驗性團隊。",
         "foundingDate": "2026",
-        "knowsAbout": ["HTML5 Canvas", "JavaScript", "博弈遊戲", "RTP", "RNG", "SEO", "GEO"]
+        "knowsAbout": ["HTML5 Canvas", "JavaScript", "博弈遊戲", "打磚塊", "滾輪控制器", "RTP", "RNG", "SEO", "GEO"]
       },
       {
         "@type": "WebSite",
@@ -92,6 +92,46 @@
           "支援鍵盤與 reduced-motion"
         ],
         "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
+      },
+      {
+        "@type": "VideoGame",
+        "@id": "https://vip-81.github.io/lightspin/#neon-breaker",
+        "name": "霓虹轉盤打磚塊",
+        "url": "https://vip-81.github.io/lightspin/neon-slot-breaker.html",
+        "description": "賽博朋克風格打磚塊遊戲，老虎機符號磚塊附帶不同分值，連擊倍率與每 10 塊觸發的 JACKPOT 金幣雨。單檔 HTML、支援鍵盤與觸控。",
+        "genre": ["Action", "Arcade"],
+        "inLanguage": "zh-Hant",
+        "isAccessibleForFree": true,
+        "playMode": "SinglePlayer",
+        "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://vip-81.github.io/lightspin/#reel-controller",
+        "name": "5×3 滾輪停止控制器",
+        "applicationCategory": "DeveloperApplication",
+        "url": "https://vip-81.github.io/lightspin/reel-demo.html",
+        "description": "純 JavaScript 邏輯層，實作 Idle、SpinUp、LoopScroll、SpinDown、Bounce、ResultShow 狀態機、200ms 交錯停止、三次多項式減速與超調回彈；中獎結果完全由後端矩陣決定，前端不計算中獎。",
+        "inLanguage": "zh-Hant",
+        "isAccessibleForFree": true,
+        "featureList": [
+          "5 軸 × 3 行有限狀態機",
+          "200ms 交錯減速停止",
+          "三次多項式零速落點",
+          "sin² 超調回彈",
+          "後端矩陣權威"
+        ],
+        "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
+      },
+      {
+        "@type": "ItemList",
+        "@id": "https://vip-81.github.io/lightspin/#works",
+        "name": "LightSpin 作品集",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "3 軸輕量老虎機", "url": "https://vip-81.github.io/lightspin/#demo" },
+          { "@type": "ListItem", "position": 2, "name": "霓虹轉盤打磚塊", "url": "https://vip-81.github.io/lightspin/neon-slot-breaker.html" },
+          { "@type": "ListItem", "position": 3, "name": "5×3 滾輪停止控制器", "url": "https://vip-81.github.io/lightspin/reel-demo.html" }
+        ]
       },
       {
         "@type": "FAQPage",
@@ -136,6 +176,14 @@
               "@type": "Answer",
               "text": "本站為純靜態檔案，可直接部署到 Netlify、Vercel、GitHub Pages 或 Cloudflare Pages。上傳前請替換 canonical 與 OG 網址為正式網域，並將 og-image.svg 轉為 1200×630 的 PNG。"
             }
+          },
+          {
+            "@type": "Question",
+            "name": "LightSpin 目前有哪些可玩的作品？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "共三款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊（賽博朋克風格、含 JACKPOT 金幣雨）、5×3 滾輪停止控制器（展示交錯停止與超調回彈）。三者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。"
+            }
           }
         ]
       },
@@ -144,8 +192,9 @@
         "@id": "https://vip-81.github.io/lightspin/#breadcrumb",
         "itemListElement": [
           { "@type": "ListItem", "position": 1, "name": "首頁", "item": "https://vip-81.github.io/lightspin/" },
-          { "@type": "ListItem", "position": 2, "name": "遊戲示範", "item": "https://vip-81.github.io/lightspin/#demo" },
-          { "@type": "ListItem", "position": 3, "name": "常見問題", "item": "https://vip-81.github.io/lightspin/#faq" }
+          { "@type": "ListItem", "position": 2, "name": "作品集", "item": "https://vip-81.github.io/lightspin/#works" },
+          { "@type": "ListItem", "position": 3, "name": "遊戲示範", "item": "https://vip-81.github.io/lightspin/#demo" },
+          { "@type": "ListItem", "position": 4, "name": "常見問題", "item": "https://vip-81.github.io/lightspin/#faq" }
         ]
       }
     ]
@@ -159,12 +208,13 @@
 
   <header class="site-header" role="banner">
     <div class="container header-inner">
-      <a class="brand" href="/" aria-label="LightSpin 首頁">
+      <a class="brand" href="index.html" aria-label="LightSpin 首頁">
         <span class="brand-mark" aria-hidden="true">✦</span>
         <span>LightSpin</span>
       </a>
       <nav class="site-nav" aria-label="主要導覽">
         <ul>
+          <li><a href="#works">作品集</a></li>
           <li><a href="#demo">遊戲示範</a></li>
           <li><a href="#features">技術特色</a></li>
           <li><a href="#sources">開源來源</a></li>
@@ -182,12 +232,13 @@
           <p class="eyebrow">開源 · 輕量 · 60 FPS</p>
           <h1 id="hero-title">純 Canvas 打造的輕量博弈遊戲實驗室</h1>
           <p class="lead">
-            LightSpin 示範如何用原生 JavaScript 與 HTML5 Canvas 建立流暢的老虎機遊戲，
-            並完整實作 SEO 與生成式引擎優化（GEO）。所有內容皆為靜態檔案，可直接部署到任一靜託平台。
+            LightSpin 收錄三款零依賴 HTML5 作品：3 軸 Canvas 老虎機、賽博朋克霓虹打磚塊，以及 5×3 滾輪停止控制器。
+            展示有限狀態機、物件池、超調回彈與 60 FPS 渲染，並完整實作 SEO 與生成式引擎優化（GEO）。
           </p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#demo" data-scroll>立即試玩</a>
-            <a class="btn btn-ghost" href="#features">查看技術特色</a>
+            <a class="btn btn-ghost" href="#works" data-scroll>瀏覽作品集</a>
+            <a class="btn btn-ghost" href="#features">技術特色</a>
           </div>
           <ul class="hero-badges" aria-label="核心特色">
             <li>零依賴</li>
@@ -232,12 +283,44 @@
       </div>
     </section>
 
+    <!-- ========== 作品集：整合三個作品，提供 GEO 可引用的結構化清單 ========== -->
+    <section class="section section-alt" id="works" aria-labelledby="works-title">
+      <div class="container">
+        <header class="section-head">
+          <p class="eyebrow">Our Works</p>
+          <h2 id="works-title">三款零依賴 HTML5 作品</h2>
+          <p>所有作品皆為靜態檔案，無需建置工具或外部 CDN，可同時部署到 GitHub Pages 與 Cloudflare Pages。</p>
+        </header>
+
+        <div class="works-grid">
+          <article class="work-card">
+            <span class="work-tag" aria-hidden="true">01 · 首頁內建</span>
+            <h3>3 軸輕量老虎機</h3>
+            <p>純 Canvas 2D 即時渲染，展示有限狀態機、物件池粒子、緩動停止與 Web Audio 音效同步。可直接在上方試玩。</p>
+            <a href="#demo" data-scroll>前往試玩 <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="work-card">
+            <span class="work-tag" aria-hidden="true">02 · 單檔遊戲</span>
+            <h3>霓虹轉盤打磚塊</h3>
+            <p>賽博朋克風格打磚塊：符號分值、連擊倍率、每 10 塊觸發 JACKPOT 金幣雨。支援鍵盤與觸控，具備完整開始／結束／重玩閉環。</p>
+            <a href="neon-slot-breaker.html">開啟遊戲 <span aria-hidden="true">↗</span></a>
+          </article>
+          <article class="work-card">
+            <span class="work-tag" aria-hidden="true">03 · 邏輯示範</span>
+            <h3>5×3 滾輪停止控制器</h3>
+            <p>每幀輸出位移資料的純邏輯層：200ms 交錯減速、三次多項式零速落點、超調回彈；結果由後端矩陣決定，前端不計算中獎。</p>
+            <a href="reel-demo.html">查看 Demo <span aria-hidden="true">↗</span></a>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- ========== 技術特色：GEO 用條列式、易擷取結構 ========== -->
     <section class="section" id="features" aria-labelledby="features-title">
       <div class="container">
         <header class="section-head">
           <p class="eyebrow">Why LightSpin</p>
-          <h2 id="features-title">五大技術特色</h2>
+          <h2 id="features-title">六大技術特色</h2>
           <p>以下是本示範採用的關鍵設計，每一項都可在行動裝置上驗證。</p>
         </header>
 
@@ -369,6 +452,10 @@
             <summary>如何將本站部署到生產環境？</summary>
             <p>本站為純靜態檔案，可直接部署到 Netlify、Vercel、GitHub Pages 或 Cloudflare Pages。上傳前請替換 canonical 與 OG 網址為正式網域，並將 og-image.svg 轉為 1200×630 的 PNG。</p>
           </details>
+          <details>
+            <summary>LightSpin 目前有哪些可玩的作品？</summary>
+            <p>共三款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊（賽博朋克風格、含 JACKPOT 金幣雨）、5×3 滾輪停止控制器（展示交錯停止與超調回彈）。三者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。</p>
+          </details>
         </div>
       </div>
     </section>
@@ -379,11 +466,11 @@
         <header class="section-head">
           <p class="eyebrow">Glossary</p>
           <h2 id="glossary-title">技術術語表</h2>
-          <p>提供明確定義，便于生成式引擎在摘要時擷取與引用。</p>
+          <p>提供明確定義，便於生成式引擎在摘要時擷取與引用。</p>
         </header>
         <dl class="glossary">
           <dt>RTP（Return to Player）</dt>
-          <dd>玩家回報率，代表長期而言玩家可收回的投注比例，应由伺服器端控管。</dd>
+          <dd>玩家回報率，代表長期而言玩家可收回的投注比例，應由伺服器端控管。</dd>
           <dt>RNG（Random Number Generator）</dt>
           <dd>隨機數生成器，正式博弈系統需使用伺服器端、可稽核的亂數來源。</dd>
           <dt>FSM（Finite State Machine）</dt>
@@ -391,9 +478,13 @@
           <dt>物件池（Object Pool）</dt>
           <dd>預先建立並重複使用物件（如粒子），降低垃圾回收造成的幀率抖動。</dd>
           <dt>GEO（Generative Engine Optimization）</dt>
-          <dd>生成式引擎優化，讓內容更易被 AI 摘要、理解與引用的結構化 writing 方式。</dd>
+          <dd>生成式引擎優化，讓內容更易被 AI 摘要、理解與引用的結構化寫作方式。</dd>
           <dt>JSON-LD</dt>
           <dd>以 JSON 格式描述的結構化資料，搜尋引擎與 AI 可從中解析實體關係。</dd>
+          <dt>Paylines（中獎線）</dt>
+          <dd>由後端回傳的中獎線索引，前端只負責繪製與呈現，不解讀或推導賠付結果。</dd>
+          <dt>超調回彈（Overshoot / Bounce）</dt>
+          <dd>停止時短暫向下越過目標格，再向上收斂對齊的視覺效果，以 sin²(πt)·e^(-1.5t) 實現兩端零速。</dd>
         </dl>
       </div>
     </section>
@@ -403,9 +494,10 @@
     <div class="container footer-inner">
       <p>LightSpin 輕量博弈實驗室 · 技術示範用途，不涉及真實博弈。</p>
       <nav aria-label="頁尾導覽">
+        <a href="#works">作品集</a>
         <a href="#demo">遊戲示範</a>
         <a href="#faq">常見問題</a>
-        <a href="/llms.txt">llms.txt</a>
+        <a href="llms.txt">llms.txt</a>
       </nav>
       <p><small>最後更新：<time datetime="2026-11-19">2026-11-19</time></small></p>
     </div>
