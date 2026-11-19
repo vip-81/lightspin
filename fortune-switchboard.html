@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0c0a1a">
+<meta name="description" content="黃金總機：改編自 Ludum Dare 60《Operator!》的 Casino 總機遊戲。接聽來電、在電話簿配對名字、完成連線賺籌碼，限時緊急來電、連擊倍率與 JACKPOT 抽獎考驗你的反應。">
+<title>黃金總機 · FORTUNE SWITCHBOARD｜LightSpin</title>
+<style>
+/* ============================================================
+   復古總機／爵士賭場主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,180,80,.12), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(120,90,255,.12), transparent 42%),
+    #070510;
+  color:#f0e8ff;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#ffdca8;text-shadow:0 0 10px rgba(255,180,80,.7),0 0 26px rgba(120,90,255,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#c9a8ff;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:1px solid rgba(200,168,255,.35);
+  border-radius:10px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 28px rgba(120,90,255,.14),inset 0 0 36px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(20,12,40,.84),rgba(6,4,14,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#ffdca8;
+  text-shadow:0 0 14px rgba(255,180,80,.8),0 0 30px rgba(120,90,255,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#cfc2ea;max-width:46ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:42px;padding:8px 18px;border-radius:8px;font:inherit;
+  font-weight:800;letter-spacing:.06em;border:1px solid rgba(200,168,255,.5);color:#ffdca8;
+  background:rgba(120,90,255,.14);transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 20px rgba(160,120,255,.4)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(120,90,255,.14),rgba(20,14,40,.1));
+  border:1px solid rgba(200,168,255,.22);border-radius:8px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#c9a8ff}
+.hud strong{display:block;font-size:15px;color:#f0e8ff;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#a99bc4;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>黃金總機</h1>
+  <p class="sub">FORTUNE SWITCHBOARD · OLD TECH, BIG CALLS</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="黃金總機遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>SWITCHBOARD ONLINE</h2>
+      <p>你是賭場總機操作員。<br>
+         先<b style="color:#7de0c8">點選來電者</b>，再到右側電話簿<b style="color:#ffd98a">點選同名條目</b>完成連線。<br>
+         <b style="color:#ff6b6b">紅色緊急來電</b>限时更短、獎勵加倍；連擊堆疊倍率！</p>
+      <button class="neon primary" id="startBtn">開始值班</button>
+      <p style="font-size:11px;opacity:.75">滑鼠／觸控點選 · 數字鍵 1-8 快速選電話簿條目</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>LINE DISCONNECTED</h2>
+      <p>漏接太多，總機已關閉</p>
+      <p>完成 <b id="finalCalls">0</b> 通 · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新值班</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>SHIFT COMPLETE</h2>
+      <p>所有線路都已接通！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再值班一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>完成</span><strong id="hCalls">0/15</strong></div>
+    <div><span>連擊</span><strong id="hCombo">x1</strong></div>
+    <div><span>漏接</span><strong id="hLives">0/3</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Operator!》（Sergei578 等）的「總機配對 + 限時壓力 + 電話簿遮線」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480, GOAL = 15;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  // 名字池（顏色 + 編號），電話簿與來電者共用
+  var NAMES = [
+    { id:'7-A', c:'#ff6b6b' }, { id:'3-K', c:'#ffb347' },
+    { id:'9-M', c:'#7de0c8' }, { id:'2-S', c:'#b9a3ff' },
+    { id:'5-D', c:'#ff8ac4' }, { id:'4-R', c:'#8fd6ff' },
+    { id:'8-T', c:'#a8ff9a' }, { id:'6-P', c:'#ffe27a' },
+    { id:'1-N', c:'#ff9f6b' }, { id:'0-V', c:'#7df9ff' },
+    { id:'C-3', c:'#ff6b8b' }, { id:'X-9', c:'#c9a8ff' }
+  ];
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';       // start | playing | over | win
+  var calls = [];           // 來電者 {name, patience, maxPatience, urgent, x, y}
+  var book = [];            // 電話簿 [{name, hidden}] 長度 8
+  var selected = -1;        // 選中的來電者索引
+  var chips = 0, completed = 0, misses = 0, combo = 0, jackpots = 0;
+  var spawnTimer = 0, shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var lines = [];           // 已完成連線的視覺線 {x1,y1,x2,y2,life,color}
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function ring(){ beep(660,.12,'sine',.05); setTimeout(function(){beep(880,.12,'sine',.05);},140); }
+
+  /* ================= 電話簿 ================= */
+  function refillBook() {
+    var pool = NAMES.slice();
+    book = [];
+    for (var i=0;i<8;i++) {
+      var idx = rand(pool.length);
+      var nm = pool.splice(idx,1)[0];
+      // 完成 5 通後，隨機 1 格被「遮線」（名字隱藏，增加記憶壓力）
+      book.push({ name:nm, hidden: (completed>=5 && Math.random()<.18) });
+    }
+    // 確保至少有一個來電者名字在電話簿中
+    if (calls.length) {
+      var need = calls[rand(calls.length)].name;
+      if (!book.some(function(b){return b.name.id===need.id;})) {
+        book[rand(8)].name = need;
+      }
+    }
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    calls=[];lines=[];chips=0;completed=0;misses=0;combo=0;jackpots=0;
+    spawnTimer=0;shake=0;selected=-1;msg='';msgTimer=0;
+    slot.active=false;slot.pay=null;slot.timer=0;
+    refillBook(); updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); mode='playing'; resetGame();
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    beep(520,.08,'triangle',.05);
+  }
+  function gameOver() {
+    mode='over';
+    $('finalCalls').textContent=completed;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    beep(880,.16,'sine',.06);setTimeout(function(){beep(1174,.22,'sine',.05);},110);
+  }
+  function showMsg(t){msg=t;msgTimer=1.4;}
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hCalls').textContent=completed+'/'+GOAL;
+    $('hCombo').textContent='x'+Math.max(1,combo);
+    $('hLives').textContent=misses+'/3';
+    $('hJackpot').textContent=jackpots;
+  }
+
+  /* ================= 交互 ================= */
+  function callPos(i){ return { x: 40 + (i%3)*118, y: 60 + Math.floor(i/3)*118 }; }
+  function bookPos(i){ return { x: 470 + (i%2)*150, y: 60 + Math.floor(i/2)*95 }; }
+
+  function selectCall(mx,my) {
+    for (var i=0;i<calls.length;i++) {
+      var p=callPos(i);
+      if (mx>=p.x && mx<=p.x+100 && my>=p.y && my<=p.y+96) {
+        selected=i; beep(480,.05,'square',.03); return;
+      }
+    }
+  }
+  function selectBook(mx,my) {
+    if (selected<0 || selected>=calls.length) { showMsg('先點選來電者'); return; }
+    for (var i=0;i<book.length;i++) {
+      var p=bookPos(i);
+      if (mx>=p.x && mx<=p.x+132 && my>=p.y && my<=p.y+74) {
+        var c=calls[selected], b=book[i];
+        if (b.name.id===c.name.id) completeCall(selected, i);
+        else { c.patience=Math.max(0,c.patience-18); shake=.3; beep(160,.12,'sawtooth',.04); showMsg('配對錯誤！'); }
+        return;
+      }
+    }
+  }
+  function completeCall(ci, bi) {
+    var c=calls[ci], bp=bookPos(bi), cp=callPos(ci);
+    combo++;
+    var base=(c.urgent?12:6)+combo*2;
+    chips+=base;
+    lines.push({x1:cp.x+50,y1:cp.y+48,x2:bp.x+66,y2:bp.y+37,life:1.1,maxLife:1.1,color:c.name.c});
+    burst(bp.x+66,bp.y+37,14,'#ffd23f');
+    beep(c.urgent?1046:760,.1,'sine',.05);
+    calls.splice(ci,1); selected=-1; completed++;
+    updateHUD();
+    if (completed%5===0) triggerJackpot();
+    refillBook();
+    if (completed>=GOAL) win();
+  }
+  function triggerJackpot() {
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    showMsg('JACKPOT！'); ring();
+    updateHUD();
+  }
+
+  /* ================= 粒子 ================= */
+  var particles=[];
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    blink+=dt; shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+    for(var l=lines.length-1;l>=0;l--){lines[l].life-=dt;if(lines[l].life<=0)lines.splice(l,1);}
+
+    // 抽獎
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?60:((a===b||b===c||a===c)?24:8);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=60?50:18,'#ffd23f');
+          beep(pay>=60?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if (mode!=='playing') return;
+
+    // 來電生成
+    spawnTimer-=dt;
+    if (spawnTimer<=0 && calls.length<3 && completed<GOAL) {
+      var nm=NAMES[rand(NAMES.length)];
+      var urgent=Math.random()<.32;
+      var max=urgent?3.6:6.5;
+      calls.push({name:nm,patience:max,maxPatience:max,urgent:urgent});
+      // 確保新來電在電話簿中
+      if(!book.some(function(b){return b.name.id===nm.id && !b.hidden;})){
+        book[rand(8)].name=nm; book[book.length-1].hidden=false;
+      }
+      spawnTimer=1.6+Math.random()*1.0;
+      ring();
+    }
+
+    // 耐心倒數
+    for (var q=calls.length-1;q>=0;q--) {
+      calls[q].patience-=dt;
+      if (calls[q].patience<=0) {
+        calls.splice(q,1);
+        if(selected===q)selected=-1;
+        misses++; combo=0; shake=.6;
+        beep(150,.25,'sawtooth',.05);
+        showMsg('漏接！'); updateHUD();
+        if(misses>=3){gameOver();return;}
+      }
+    }
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function panel(x,y,w,h,title,color){
+    ctx.fillStyle='rgba(14,10,30,.9)';ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);
+    ctx.fillStyle=color;ctx.font='bold 12px system-ui';ctx.textAlign='left';
+    ctx.fillText(title,x+10,y+18);
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    ctx.fillStyle='#0b0718';ctx.fillRect(0,0,W,H);
+    // 背景復古格線
+    ctx.strokeStyle='rgba(200,168,255,.05)';ctx.lineWidth=1;
+    for(var x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    panel(24,40,324,420,'INCOMING CALLS','#7de0c8');
+    panel(460,40,316,420,'PHONE BOOK','#ffd98a');
+
+    // 已完成連線
+    lines.forEach(function(l){
+      ctx.save();ctx.globalAlpha=Math.max(0,l.life/l.maxLife);
+      ctx.strokeStyle=l.color;ctx.lineWidth=3;ctx.shadowColor=l.color;ctx.shadowBlur=10;
+      ctx.beginPath();ctx.moveTo(l.x1,l.y1);
+      ctx.bezierCurveTo((l.x1+l.x2)/2,l.y1,(l.x1+l.x2)/2,l.y2,l.x2,l.y2);
+      ctx.stroke();ctx.restore();
+    });
+
+    // 來電者
+    calls.forEach(function(c,i){
+      var p=callPos(i), sel=(i===selected);
+      ctx.save();
+      ctx.fillStyle=c.urgent?'rgba(120,20,40,.5)':'rgba(30,25,60,.6)';
+      ctx.fillRect(p.x,p.y,100,96);
+      ctx.strokeStyle=sel?'#ffd23f':(c.urgent?'#ff6b6b':c.name.c);
+      ctx.lineWidth=sel?3:1.5;ctx.strokeRect(p.x,p.y,100,96);
+      if(c.urgent){ctx.fillStyle='#ff6b6b';ctx.font='bold 10px system-ui';ctx.textAlign='left';
+        ctx.fillText('! URGENT',p.x+6,p.y+14);}
+      ctx.fillStyle=c.name.c;ctx.font='900 28px system-ui';ctx.textAlign='center';
+      ctx.fillText(c.name.id,p.x+50,p.y+58);
+      // 耐心條
+      var ratio=clamp(c.patience/c.maxPatience,0,1);
+      ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(p.x+8,p.y+76,84,8);
+      ctx.fillStyle=ratio>.4?'#39ff88':(ratio>.2?'#ffd23f':'#ff6b6b');
+      ctx.fillRect(p.x+8,p.y+76,84*ratio,8);
+      ctx.restore();
+    });
+
+    // 電話簿條目
+    book.forEach(function(b,i){
+      var p=bookPos(i);
+      ctx.save();
+      ctx.fillStyle='rgba(30,25,55,.7)';ctx.fillRect(p.x,p.y,132,74);
+      ctx.strokeStyle=b.hidden?'#6a5a8a':b.name.c;ctx.lineWidth=1.5;
+      ctx.strokeRect(p.x,p.y,132,74);
+      ctx.fillStyle=b.hidden?'#8a7aa8':b.name.c;
+      ctx.font='900 22px system-ui';ctx.textAlign='center';
+      ctx.fillText(b.hidden?'???':b.name.id,p.x+66,p.y+44);
+      ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='10px system-ui';
+      ctx.fillText('#'+(i+1),p.x+12,p.y+16);
+      ctx.restore();
+    });
+
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+
+    // JACKPOT 面板
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px=W/2-pw/2,py=18;
+      ctx.fillStyle='rgba(20,12,40,.96)';ctx.fillRect(px,py,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText('JACKPOT',W/2,py+16);
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px+20+i*(rw+15),ry=py+28;
+        ctx.fillStyle='#0c0a1a';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#c9a8ff';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+        ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+      }
+      if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';
+        ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 15px system-ui';ctx.textAlign='center';
+      ctx.fillText(msg,W/2,H-14);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();unlockAudio();
+    var rect=canvas.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)/rect.width*W, my=(e.clientY-rect.top)/rect.height*H;
+    if(mx>=460)selectBook(mx,my); else selectCall(mx,my);
+  });
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(e.code.indexOf('Digit')===0||e.code.indexOf('Numpad')===0){
+      var n=parseInt(e.code.replace('Digit','').replace('Numpad',''),10);
+      if(n>=1&&n<=8){
+        var p=bookPos(n-1), rect=canvas.getBoundingClientRect();
+        selectBook(p.x+66,p.y+37);
+      }
+    }
+  });
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
