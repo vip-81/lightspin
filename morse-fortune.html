@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a1014">
+<meta name="description" content="摩斯金庫：改編自 Ludum Dare 60《!》的 Casino 解碼遊戲。聆聽電報滴滴聲解碼摩斯密碼，拖動對照表找答案，拼出記憶碎片賺籌碼，限時壓力與 JACKPOT 考驗你的反應。">
+<title>摩斯金庫 · MORSE FORTUNE｜LightSpin</title>
+<style>
+/* ============================================================
+   電報機／復古戰時主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(120,180,170,.12), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(200,140,80,.10), transparent 42%),
+    #05090b;
+  color:#e2e8e2;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#bfe0d4;text-shadow:0 0 10px rgba(120,180,170,.7),0 0 26px rgba(200,140,80,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:1px solid rgba(160,200,190,.3);
+  border-radius:10px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 28px rgba(120,180,170,.14),inset 0 0 36px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(16,24,22,.84),rgba(4,8,8,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#bfe0d4;
+  text-shadow:0 0 14px rgba(120,180,170,.8),0 0 30px rgba(200,140,80,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2cfc6;max-width:46ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:42px;padding:8px 16px;border-radius:8px;font:inherit;
+  font-weight:800;letter-spacing:.06em;border:1px solid rgba(160,200,190,.5);color:#bfe0d4;
+  background:rgba(120,180,170,.12);transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 20px rgba(120,180,170,.4)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#7de0c8,#a8f0dc);color:#08211a;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(120,180,170,.12),rgba(20,30,28,.1));
+  border:1px solid rgba(160,200,190,.22);border-radius:8px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e2e8e2;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a89e;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>摩斯金庫</h1>
+  <p class="sub">MORSE FORTUNE · OLD TECH, NEW MEMORIES</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="摩斯金庫遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>TELEGRAPH ONLINE</h2>
+      <p>電報滴滴作響，記憶碎片浮現。<br>
+         解碼摩斯密碼，從選項中找出正確的詞，<br>
+         <b style="color:#9fd0d8">拖動左側對照表</b>可幫你查詢——就像拖動那張購物清單。</p>
+      <button class="neon primary" id="startBtn">開始接收</button>
+      <p style="font-size:11px;opacity:.75">滑鼠拖動對照表 · 點選選項解碼 · 限時壓力</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>SIGNAL LOST</h2>
+      <p>訊號中斷，記憶消散</p>
+      <p>解碼 <b id="finalSolved">0</b> 則 · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新接收</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>MEMORY RESTORED</h2>
+      <p>所有記憶已拼回，家的方向清晰了</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>解碼</span><strong id="hSolved">0/10</strong></div>
+    <div><span>時間</span><strong id="hTime">60</strong></div>
+    <div><span>連擊</span><strong id="hCombo">x1</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《!》（supernova191919）的「電報摩斯 + 記憶碎片 + 可拖動清單」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範，並向原作的反戰主題致敬。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480, GOAL = 10;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  // 記憶詞：呼應原作「想回家」的反戰叙事 + 博弈詞
+  var WORDS = [
+    { w:'HOME',  code:'.... --- -- .',    memo:'廚房裡飄著湯的香味' },
+    { w:'MOM',   code:'-- --- --',        memo:'她總在門口等我' },
+    { w:'PEACE', code:'.--. . .- -.-. .', memo:'難得的安靜午後' },
+    { w:'HOPE',  code:'.... --- .--. .',  memo:'寫給明天的信' },
+    { w:'LOVE',  code:'.-.. --- ...- .',  memo:'口袋裡的舊照片' },
+    { w:'GOLD',  code:'--. --- .-.. -.',   memo:'父親的懷錶' },
+    { w:'LUCK',  code:'.-.. ..- -.-.',     memo:'那枚硬幣還在' },
+    { w:'WIN',   code:'.-- .. -.',        memo:'終於能回家了' },
+    { w:'CASH',  code:'-.-. .- ... ....',  memo:'第一份薪水' },
+    { w:'STAR',  code:'... - .- .-.',     memo:'夜空中的北極星' },
+    { w:'DREAM', code:-1,                  memo:'未完成的夢' },
+    { w:'GAME',  code:-1,                  memo:'孩子們的笑聲' }
+  ];
+  // 補上 DREAM / GAME 的摩斯碼
+  WORDS[10].code='-.. .-. . .- --';
+  WORDS[11].code='--. .- -- .';
+
+  var MORSE_TABLE = [
+    ['A','.-'],['B','-...'],['C','-.-.'],['D','-..'],['E','.'],['F','..-.'],
+    ['G','--.'],['H','....'],['I','..'],['J','.---'],['K','-.-'],['L','.-..'],
+    ['M','--'],['N','-.'],['O','---'],['P','.--.'],['Q','--.-'],['R','.-.'],
+    ['S','...'],['T','-'],['U','..-'],['V','...-'],['W','.--'],['X','-..-'],
+    ['Y','-.--'],['Z','--..']
+  ];
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';    // start | playing | over | win
+  var puzzle = null;     // {word, options:[], correct:index}
+  var solved = 0, chips = 0, combo = 0, jackpots = 0;
+  var timeLeft = 60, shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var morseT = 0;        // 摩斯播放進度
+  var panel = { x: 24, y: 40, dragging:false, dx:0, dy:0 };  // 可拖動對照表
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function morseBeep(isDash){ beep(isDash?520:700, isDash?.18:.07, 'sine', .04); }
+
+  /* ================= 關卡 ================= */
+  function newPuzzle() {
+    var pool = WORDS.slice();
+    var pick = pool.splice(rand(pool.length),1)[0];
+    var opts = [{w:pick.w, ok:true}];
+    while(opts.length<4){ var d=pool.splice(rand(pool.length),1)[0]; opts.push({w:d.w, ok:false}); }
+    for(var i=opts.length-1;i>0;i--){var j=rand(i+1),t=opts[i];opts[i]=opts[j];opts[j]=t;}
+    var correct=0;opts.forEach(function(o,i){if(o.ok)correct=i;});
+    puzzle={word:pick, options:opts, correct:correct, memo:pick.memo};
+    morseT=0; msg=''; msgTimer=0;
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    solved=0;chips=0;combo=0;jackpots=0;timeLeft=60;
+    shake=0;slot.active=false;slot.pay=null;slot.timer=0;
+    panel={x:24,y:40,dragging:false,dx:0,dy:0};
+    newPuzzle(); updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); mode='playing'; resetGame();
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    beep(520,.08,'triangle',.05);
+  }
+  function gameOver() {
+    mode='over';
+    $('finalSolved').textContent=solved;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    beep(880,.16,'sine',.06);setTimeout(function(){beep(1174,.22,'sine',.05);},110);
+  }
+  function showMsg(t){msg=t;msgTimer=1.4;}
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hSolved').textContent=solved+'/'+GOAL;
+    $('hTime').textContent=Math.max(0,Math.ceil(timeLeft));
+    $('hCombo').textContent='x'+Math.max(1,combo);
+    $('hJackpot').textContent=jackpots;
+  }
+
+  /* ================= 交互 ================= */
+  function answer(i) {
+    if (mode!=='playing'||slot.active) return;
+    if (i===puzzle.correct) {
+      combo++;
+      var pay=18*combo;
+      chips+=pay; solved++;
+      beep(760,.1,'sine',.05);
+      showMsg('解碼成功：'+puzzle.word.w+' · '+puzzle.memo);
+      if (solved%3===0) triggerJackpot();
+      if (solved>=GOAL) win();
+      else newPuzzle();
+    } else {
+      combo=0; timeLeft=Math.max(0,timeLeft-7);
+      shake=.6; beep(150,.25,'sawtooth',.05);
+      showMsg('解碼錯誤 -7 秒');
+      if (timeLeft<=0) gameOver();
+    }
+    updateHUD();
+  }
+  function triggerJackpot() {
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    showMsg('JACKPOT！');
+    updateHUD();
+  }
+
+  /* ================= 粒子 ================= */
+  var particles=[];
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    blink+=dt; shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+
+    // 摩斯播放節奏（僅供視聽，不影響解碼）
+    morseT+=dt;
+    if (mode==='playing' && !slot.active) {
+      var chars=puzzle.word.code.split(' ');
+      var period=chars.length*0.42;
+      var phase=morseT%period;
+      var idx=Math.floor(phase/0.42);
+      if (idx !== update._lastIdx && chars[idx]) {
+        update._lastIdx=idx;
+        morseBeep(chars[idx].indexOf('-')>=0);
+      }
+    }
+
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?80:((a===b||b===c||a===c)?30:10);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=80?50:18,'#ffd23f');
+          beep(pay>=80?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if (mode!=='playing') return;
+    timeLeft-=dt;
+    if(timeLeft<=0){gameOver();return;}
+    updateHUD();
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    ctx.fillStyle='#08100e';ctx.fillRect(0,0,W,H);
+    // 背景格線
+    ctx.strokeStyle='rgba(160,200,190,.05)';ctx.lineWidth=1;
+    for(var x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // 標題
+    ctx.fillStyle='#bfe0d4';ctx.font='bold 12px system-ui';ctx.textAlign='left';
+    ctx.fillText('INCOMING TELEGRAPH',24,24);
+
+    // 電報機面板
+    ctx.fillStyle='rgba(14,24,22,.9)';ctx.fillRect(330,40,446,180);
+    ctx.strokeStyle='rgba(160,200,190,.4)';ctx.lineWidth=1.5;ctx.strokeRect(330,40,446,180);
+    // 摩斯碼（逐字顯示，當前字高亮）
+    if(puzzle){
+      var chars=puzzle.word.code.split(' ');
+      var period=chars.length*0.42, phase=morseT%period, cur=Math.floor(phase/0.42);
+      var cx=350;
+      chars.forEach(function(ch,i){
+        var isCur=(i===cur);
+        ctx.fillStyle=isCur?'#ffd23f':'#7fb8a8';
+        ctx.font='bold 26px ui-monospace,monospace';ctx.textAlign='left';
+        ctx.fillText(ch,cx,100);
+        cx+=ch.length*20+22;
+      });
+      // 提示字
+      ctx.fillStyle='rgba(190,224,212,.5)';ctx.font='11px system-ui';ctx.textAlign='left';
+      ctx.fillText('解碼後點選右側答案',350,140);
+      // 記憶碎片（正確後短暫顯示）
+      if(msgTimer>0 && msg.indexOf('解碼成功')===0){
+        ctx.fillStyle='#ffd23f';ctx.font='italic 14px system-ui';
+        ctx.fillText('“'+puzzle.memo+'”',350,180);
+      }
+    }
+
+    // 選項按鈕
+    if(puzzle){
+      puzzle.options.forEach(function(o,i){
+        var bx=350+(i%2)*222, by=245+Math.floor(i/2)*95;
+        ctx.fillStyle='rgba(20,32,30,.9)';
+        ctx.fillRect(bx,by,206,78);
+        ctx.strokeStyle='rgba(160,200,190,.45)';ctx.lineWidth=1.5;
+        ctx.strokeRect(bx,by,206,78);
+        ctx.fillStyle='#bfe0d4';ctx.font='900 28px system-ui';ctx.textAlign='center';
+        ctx.fillText(o.w,bx+103,by+50);
+      });
+    }
+
+    // 可拖動對照表（致敬購物清單）
+    ctx.save();
+    ctx.fillStyle='rgba(10,18,16,.96)';ctx.fillRect(panel.x,panel.y,286,330);
+    ctx.strokeStyle='#cdb894';ctx.lineWidth=2;ctx.strokeRect(panel.x,panel.y,286,330);
+    // 拖動把手
+    ctx.fillStyle='rgba(205,184,148,.25)';ctx.fillRect(panel.x,panel.y,286,28);
+    ctx.fillStyle='#cdb894';ctx.font='bold 11px system-ui';ctx.textAlign='center';
+    ctx.fillText('☰ 摩斯對照表（可拖動）',panel.x+143,panel.y+19);
+    // 內容
+    MORSE_TABLE.forEach(function(row,i){
+      var col=i%2, r=Math.floor(i/2);
+      var tx=panel.x+16+col*140, ty=panel.y+52+r*22;
+      ctx.fillStyle='#7fb8a8';ctx.font='bold 12px ui-monospace,monospace';ctx.textAlign='left';
+      ctx.fillText(row[0]+'  '+row[1],tx,ty);
+    });
+    ctx.restore();
+
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+
+    // JACKPOT
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px=W/2-pw/2,py=18;
+      ctx.fillStyle='rgba(16,20,14,.96)';ctx.fillRect(px,py,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText('JACKPOT',W/2,py+16);
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px+20+i*(rw+15),ry=py+28;
+        ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#9fd0d8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+        ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+      }
+      if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';
+        ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 14px system-ui';ctx.textAlign='center';
+      ctx.fillText(msg,W/2,H-14);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  function getPos(e){
+    var rect=canvas.getBoundingClientRect();
+    return {x:(e.clientX-rect.left)/rect.width*W, y:(e.clientY-rect.top)/rect.height*H};
+  }
+  canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();unlockAudio();
+    var p=getPos(e);
+    // 對照表拖動（只允許拖動對照表，致敬原作）
+    if(p.x>=panel.x&&p.x<=panel.x+286&&p.y>=panel.y&&p.y<=panel.y+330){
+      panel.dragging=true;panel.dx=p.x-panel.x;panel.dy=p.y-panel.y;return;
+    }
+    // 選項
+    if(puzzle){
+      for(var i=0;i<4;i++){
+        var bx=350+(i%2)*222, by=245+Math.floor(i/2)*95;
+        if(p.x>=bx&&p.x<=bx+206&&p.y>=by&&p.y<=by+78){answer(i);return;}
+      }
+    }
+  });
+  canvas.addEventListener('pointermove',function(e){
+    if(!panel.dragging)return;
+    var p=getPos(e);
+    panel.x=clamp(p.x-panel.dx,0,W-286);
+    panel.y=clamp(p.y-panel.dy,0,H-330);
+  });
+  canvas.addEventListener('pointerup',function(){panel.dragging=false;});
+  canvas.addEventListener('pointerleave',function(){panel.dragging=false;});
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    var map={Digit1:0,Digit2:1,Digit3:2,Digit4:3};
+    if(map[e.code]!==undefined)answer(map[e.code]);
+  });
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
