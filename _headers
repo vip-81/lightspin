@@ -4,7 +4,7 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Ytdiej7pxZZImPjkEF9MuOEdCKwhpuvb1LTHbHXPlgA=' 'sha256-kf2XmVT7wEeCx71xQAoGqZMYTmtdclINmdonIqroZSA='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'
 
 # 靜態資源長快取
 /assets/*
@@ -13,3 +13,4 @@
 # HTML 不快取，確保 SEO/GEO 更新立即生效
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
+
