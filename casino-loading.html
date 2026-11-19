@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0e1218">
+<meta name="description" content="賭場搬運部：改編自 Ludum Dare 60《The Loading Department》的 Casino 動作遊戲。操作倉鼠員工從金庫拿籌碼、送到轉換機與包裝機處理、搬到交付窗口，喝咖啡加速，限時完成訂單。">
+<title>賭場搬運部 · CASINO LOADING｜LightSpin</title>
+<style>
+/* ============================================================
+    Computer-workshop 主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(80,200,180,.12), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(255,180,60,.10), transparent 42%),
+    #060a0c;
+  color:#e0eae6;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#9fe0d0;text-shadow:0 0 10px rgba(80,200,180,.7),0 0 26px rgba(255,180,60,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(120,200,180,.35);
+  border-radius:8px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(80,200,180,.16),inset 0 0 50px rgba(0,0,0,.6)}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(12,22,20,.88),rgba(4,8,8,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fe0d0;
+  text-shadow:0 0 14px rgba(80,200,180,.8),0 0 30px rgba(255,180,60,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2d2c8;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;
+  font-weight:800;letter-spacing:.03em;border:2px solid rgba(120,200,180,.5);color:#9fe0d0;
+  background:rgba(80,200,180,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon:disabled{opacity:.4;cursor:not-allowed;transform:none}
+button.neon.primary{background:linear-gradient(135deg,#5ae0a0,#9ff8cc);color:#082018;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(80,200,180,.12),rgba(20,30,26,.1));
+  border:1px solid rgba(120,200,180,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0eae6;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a8a0;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>賭場搬運部</h1>
+  <p class="sub">CASINO LOADING · BEHIND EVERY PROGRESS BAR</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="450" aria-label="賭場搬運部遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>THE LOADING DEPARTMENT</h2>
+      <p>每個進度條背後，都有一群忙碌的倉鼠。<br>
+         你是其中一隻：從<b style="color:#ffd23f">金庫</b>拿籌碼 → <b style="color:#7db8ff">轉換機</b> → <b style="color:#ff8ac4">包裝機</b> → <b style="color:#7de0a0">交付窗口</b>。<br>
+         <b>Z</b> 拿/放 · <b>X</b> 丟擲整疊 · 喝<b>咖啡</b>加速 30 秒！</p>
+      <button class="neon primary" id="startBtn">開始上班</button>
+      <p style="font-size:11px;opacity:.75">方向鍵移動 · Z 互動 · X 丟擲 · 觸控可用下方按鈕</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>TIME OUT</h2>
+      <p>使用者關掉了進度條…</p>
+      <p>完成訂單 <b id="finalOrders">0</b> · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新上班</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>SHIFT COMPLETE</h2>
+      <p>所有訂單準時交付，進度條 100%！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>訂單</span><strong id="hOrders">0/8</strong></div>
+    <div><span>攜帶</span><strong id="hCarry">0</strong></div>
+    <div><span>時間</span><strong id="hTime">120</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <div class="controls">
+    <button class="neon" id="upBtn">▲</button>
+    <button class="neon" id="leftBtn">◀</button>
+    <button class="neon" id="downBtn">▼</button>
+    <button class="neon" id="rightBtn">▶</button>
+    <button class="neon" id="actBtn">Z 拿/放</button>
+    <button class="neon" id="throwBtn">X 丟擲</button>
+    <button class="neon gold" id="coffeeBtn">☕ 咖啡</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《The Loading Department》（JerryWest）的「搬運->處理->交付 + 堆疊丟擲 + 咖啡加速」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 450, GOAL = 8;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  // 車站：vault 金庫(原始) / convert 轉換機 / pack 包裝機 / deliver 交付 / coffee 咖啡
+  var STATIONS = [
+    { id:'vault',   x:70,  y:70,  w:150, h:100, color:'#ffd23f', label:'VAULT'   },
+    { id:'convert', x:330, y:70,  w:150, h:100, color:'#7db8ff', label:'CONVERT' },
+    { id:'pack',    x:590, y:70,  w:150, h:100, color:'#ff8ac4', label:'PACK'    },
+    { id:'coffee',  x:70,  y:250, w:150, h:100, color:'#d0a060', label:'COFFEE'  },
+    { id:'deliver', x:590, y:250, w:150, h:100, color:'#7de0a0', label:'DELIVER' }
+  ];
+  // 訂單：需要若干「已處理」籌碼
+  var ORDER_NEEDS = [2,2,3,3,4,4,5,5];
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';   // start | playing | over | win
+  var px = 400, py = 350, face = 1;
+  var carrying = 0;     // 攜帶的原始籌碼
+  var processed = 0;    // 已處理（轉換+包裝完成）可交付
+  var chips = 0, orders = 0, jackpots = 0;
+  var timeLeft = 120, coffeeBoost = 0;
+  var currentOrder = 0;
+  var shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var particles = [];
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+  var keys = {left:false,right:false,up:false,down:false};
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function coin(){ beep(880,.05,'sine',.04); }
+
+  /* ================= 粒子 ================= */
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    px=400;py=350;face=1;carrying=0;processed=0;
+    chips=0;orders=0;jackpots=0;timeLeft=120;coffeeBoost=0;currentOrder=0;
+    shake=0;msg='';msgTimer=0;particles=[];
+    slot.active=false;slot.pay=null;slot.timer=0;
+    addMsg('新班次開始！');
+    updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); resetGame(); mode='playing';
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    coin();
+  }
+  function gameOver() {
+    mode='over';
+    $('finalOrders').textContent=orders;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    beep(523,.12,'square',.05);setTimeout(function(){beep(659,.12,'square',.05);},110);setTimeout(function(){beep(784,.18,'square',.05);},220);
+  }
+  function addMsg(t){msg=t;msgTimer=1.5;}
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hOrders').textContent=orders+'/'+GOAL;
+    $('hCarry').textContent=carrying;
+    $('hTime').textContent=Math.max(0,Math.ceil(timeLeft));
+    $('hJackpot').textContent=jackpots;
+  }
+
+  /* ================= 互動 ================= */
+  function stationAt(x,y){
+    for(var i=0;i<STATIONS.length;i++){var s=STATIONS[i];
+      if(x>=s.x&&x<=s.x+s.w&&y>=s.y&&y<=s.y+s.h)return s;}
+    return null;
+  }
+  function interact(){
+    if(mode!=='playing')return;
+    var s=stationAt(px,py);
+    if(!s){addMsg('附近沒有工作站');return;}
+    if(s.id==='vault'){
+      carrying+=3; beep(600,.05,'square',.03); addMsg('拿取 3 堆籌碼（攜帶 '+carrying+'）');
+    } else if(s.id==='convert'){
+      if(carrying>0){ processed+=carrying; carrying=0; beep(720,.08,'sine',.04); addMsg('轉換完成，待包裝 '+processed); }
+      else addMsg('沒有可轉換的籌碼');
+    } else if(s.id==='pack'){
+      if(processed>0){ carrying=processed; processed=0; beep(840,.08,'sine',.04); addMsg('包裝完成，可交付 '+carrying); }
+      else addMsg('沒有可包裝的籌碼');
+    } else if(s.id==='deliver'){
+      var need=ORDER_NEEDS[currentOrder]||5;
+      if(carrying>=need){
+        carrying-=need;
+        var pay=need*20; chips+=pay; orders++;
+        burst(s.x+s.w/2,s.y+s.h/2,20,'#ffd23f'); coin();
+        addMsg('訂單 '+orders+' 交付！+'+pay+' 籌碼');
+        if(orders%3===0)triggerJackpot();
+        currentOrder++;
+        if(orders>=GOAL){win();return;}
+      } else addMsg('需要 '+need+' 個已包裝籌碼（目前 '+carrying+'）');
+    } else if(s.id==='coffee'){
+      coffeeBoost=30; timeLeft=Math.min(180,timeLeft+4);
+      beep(440,.1,'triangle',.05); addMsg('☕ 咖啡！30 秒加速 +4 秒');
+      burst(s.x+s.w/2,s.y+s.h/2,14,'#d0a060');
+    }
+    shake=Math.min(1,shake+.15);
+    updateHUD();
+  }
+  function throwStack(){
+    if(mode!=='playing'||carrying<=0)return;
+    // 朝面向丟擲：送到前方最近的工作站 input
+    var tx=px+face*140;
+    var s=stationAt(tx,py);
+    if(s&&(s.id==='convert'||s.id==='pack'||s.id==='deliver')){
+      // 把整疊直接丟進工作站（簡化：與 interact 等效但一次到底）
+      if(s.id==='convert'){processed+=carrying;carrying=0;addMsg('丟入轉換機 '+processed);}
+      else if(s.id==='pack'){carrying=carrying;addMsg('丟入包裝機');}
+      else if(s.id==='deliver'){
+        var need=ORDER_NEEDS[currentOrder]||5;
+        if(carrying>=need){carrying-=need;var pay=need*20;chips+=pay;orders++;coin();
+          addMsg('直接投遞成功！+'+pay);if(orders%3===0)triggerJackpot();currentOrder++;
+          if(orders>=GOAL){win();return;}}
+        else addMsg('訂單需要 '+need+' 個');
+      }
+      beep(300,.06,'square',.03);
+      burst(tx,py,10,s.color);
+      shake=Math.min(1,shake+.25);
+      updateHUD();
+    } else { addMsg('丟擲落空'); carrying=0; updateHUD(); }
+  }
+  function triggerJackpot(){
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    addMsg('JACKPOT！');
+    updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    blink+=dt; shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?100:((a===b||b===c||a===c)?40:12);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=100?50:18,'#ffd23f');
+          beep(pay>=100?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if (mode!=='playing') return;
+
+    // 移動
+    var speed=(coffeeBoost>0?260:150);
+    if(keys.left){px-=speed*dt;face=-1;}
+    if(keys.right){px+=speed*dt;face=1;}
+    if(keys.up)py-=speed*dt;
+    if(keys.down)py+=speed*dt;
+    px=clamp(px,16,W-16); py=clamp(py,190,H-20);
+
+    if(coffeeBoost>0)coffeeBoost-=dt;
+    timeLeft-=dt;
+    if(timeLeft<=0){gameOver();return;}
+    updateHUD();
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function drawStation(s){
+    ctx.save();
+    ctx.fillStyle='rgba(14,20,22,.95)';ctx.fillRect(s.x,s.y,s.w,s.h);
+    ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.strokeRect(s.x,s.y,s.w,s.h);
+    ctx.fillStyle=s.color;ctx.font='bold 12px ui-monospace,monospace';ctx.textAlign='center';
+    ctx.fillText(s.label,s.x+s.w/2,s.y+22);
+    // 簡圖
+    ctx.font='34px system-ui';
+    var icon={vault:'▣',convert:'⚙',pack:'▦',coffee:'☕',deliver:'▤'}[s.id];
+    ctx.fillText(icon,s.x+s.w/2,s.y+64);
+    ctx.restore();
+  }
+
+  function drawHamster(){
+    ctx.save();
+    ctx.fillStyle='#d8b080';ctx.beginPath();ctx.ellipse(px,py,16,13,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#8a5a30';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#3a2418';ctx.beginPath();ctx.arc(px+face*6,py-2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e0a0a0';ctx.beginPath();ctx.arc(px+face*13,py,3,0,Math.PI*2);ctx.fill();
+    // 攜帶堆疊
+    if(carrying>0){
+      ctx.fillStyle='#ffd23f';
+      for(var i=0;i<Math.min(carrying,5);i++)ctx.fillRect(px-10+i*4,py-30-i*5,12,6);
+      ctx.fillStyle='#fff';ctx.font='bold 11px ui-monospace,monospace';ctx.textAlign='center';
+      ctx.fillText('×'+carrying,px,py-46);
+    }
+    if(coffeeBoost>0){
+      ctx.fillStyle='#ffd23f';ctx.font='bold 11px system-ui';ctx.textAlign='center';
+      ctx.fillText('⚡'+Math.ceil(coffeeBoost)+'s',px,py+26);
+    }
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    ctx.fillStyle='#0a1214';ctx.fillRect(0,0,W,H);
+    // 地板格線
+    ctx.strokeStyle='rgba(120,200,180,.05)';ctx.lineWidth=1;
+    for(var x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,180);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=180;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    // 分隔線
+    ctx.strokeStyle='rgba(120,200,180,.2)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,180);ctx.lineTo(W,180);ctx.stroke();
+
+    STATIONS.forEach(drawStation);
+    drawHamster();
+
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+
+    // 訂單需求
+    var need=ORDER_NEEDS[currentOrder]||5;
+    ctx.fillStyle='#9fe0d0';ctx.font='bold 13px ui-monospace,monospace';ctx.textAlign='left';
+    ctx.fillText('ORDER #'+(orders+1)+' 需要 '+need+' 個已包裝籌碼',330,160);
+
+    // JACKPOT
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px2=W/2-pw/2,py2=18;
+      ctx.fillStyle='rgba(10,16,14,.96)';ctx.fillRect(px2,py2,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px2,py2,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText('JACKPOT',W/2,py2+16);
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px2+20+i*(rw+15),ry=py2+28;
+        ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#9fe0d0';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+        ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+      }
+      if(slot.pay!==null)ctx.fillStyle='#39ff88',ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py2+110);
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-26,W,26);
+      ctx.fillStyle='#ffe27a';ctx.font='bold 13px system-ui';ctx.textAlign='center';
+      ctx.fillText(msg,W/2,H-8);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  var KEYMAP={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down'};
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(KEYMAP[e.code]){e.preventDefault();keys[KEYMAP[e.code]]=true;}
+    if(e.code==='KeyZ'){interact();}
+    if(e.code==='KeyX'){throwStack();}
+    if(e.code==='KeyC'){ /* coffee handled via station */ }
+  });
+  window.addEventListener('keyup',function(e){
+    if(KEYMAP[e.code])keys[KEYMAP[e.code]]=false;
+  });
+  function bindHold(id,key){
+    var b=$(id);
+    b.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();keys[key]=true;});
+    b.addEventListener('pointerup',function(){keys[key]=false;});
+    b.addEventListener('pointerleave',function(){keys[key]=false;});
+  }
+  bindHold('upBtn','up');bindHold('downBtn','down');bindHold('leftBtn','left');bindHold('rightBtn','right');
+  $('actBtn').addEventListener('click',function(){interact();});
+  $('throwBtn').addEventListener('click',function(){throwStack();});
+  $('coffeeBtn').addEventListener('click',function(){
+    if(mode!=='playing')return;
+    coffeeBoost=30;timeLeft=Math.min(180,timeLeft+4);
+    addMsg('☕ 咖啡！30 秒加速');coin();
+  });
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
