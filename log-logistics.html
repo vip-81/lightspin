@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1a1410">
+<meta name="description" content="圓木物流：改編自 Ludum Dare 60《Primitive Logistics》的 Casino 物理運輸遊戲。拖曳有限的圓木當滾輪，載著易碎的黃金機器人穿越廢土、填坑避顛簸，安全的送到終點賺籌碼。">
+<title>圓木物流 · LOG LOGISTICS｜LightSpin</title>
+<style>
+/* ============================================================
+   荒土運輸／古科技主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(200,150,80,.12), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(120,100,180,.10), transparent 42%),
+    #0a0806;
+  color:#e8e0d4;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#e8c898;text-shadow:0 0 10px rgba(200,150,80,.7),0 0 26px rgba(120,100,180,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(200,150,80,.35);
+  border-radius:8px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(200,150,80,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(22,16,12,.88),rgba(6,4,4,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#e8c898;
+  text-shadow:0 0 14px rgba(200,150,80,.8),0 0 30px rgba(120,100,180,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#cfc4b2;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;
+  font-weight:800;letter-spacing:.03em;border:2px solid rgba(200,150,80,.5);color:#e8c898;
+  background:rgba(200,150,80,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#d0a060,#f0d0a0);color:#2a1a08;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(200,150,80,.12),rgba(30,24,20,.1));
+  border:1px solid rgba(200,150,80,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e8e0d4;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#a89c8c;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>圓木物流</h1>
+  <p class="sub">LOG LOGISTICS · DELIVER WITH YESTERDAY'S TOOLS</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="450" aria-label="圓木物流遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>PRIMITIVE LOGISTICS</h2>
+      <p>用昨天的工具，送明天的科技。<br>
+         <b style="color:#ffd23f">拖曳圓木</b>鋪成滾輪，讓載著黃金機器人的托盤前進。<br>
+         填坑、避顛簸——<b>別讓貨物掉下去！</b> 圓木有限，謹慎使用。</p>
+      <button class="neon primary" id="startBtn">開始运送</button>
+      <p style="font-size:11px;opacity:.75">拖曳圓木鋪路 · 按 Space 推送 · R 回到檢查點</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>CARGO LOST</h2>
+      <p>貨物掉落，運送失敗</p>
+      <p>抵達檢查點 <b id="finalCp">0</b> · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新运送</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>DELIVERED!</h2>
+      <p>黃金機器人安全送達！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>檢查點</span><strong id="hCp">0/3</strong></div>
+    <div><span>圓木</span><strong id="hLogs">3</strong></div>
+    <div><span>進度</span><strong id="hProgress">0%</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <div class="controls">
+    <button class="neon" id="pushBtn">Space 推送</button>
+    <button class="neon" id="resetBtn">R 檢查點</button>
+    <button class="neon gold" id="addLogBtn">+ 圓木 (50)</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Primitive Logistics》（CupofCuppuccino）的「圓木滾輪運輸 + 有限資源 + 檢查點」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 450;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  var GROUND_Y = 360;
+  var START_X = 90, GOAL_X = 720;
+  var CP_X = [280, 470, 640];   // 3 個檢查點
+  var PITS = [[360,410],[540,590]];   // 坑洞 x 範圍
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';   // start | playing | win / over
+  var cart = { x:START_X, y:GROUND_Y-30, vx:0, vy:0, stability:100 };
+  var logs = [];        // {x, y, placed}
+  var logStock = 3;     // 持有圓木
+  var chips = 0, checkpoint = 0, jackpots = 0;
+  var pushing = false;
+  var shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var particles = [];
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function coin(){ beep(880,.05,'sine',.04); }
+  function bump(){ beep(160,.12,'sawtooth',.05); }
+
+  /* ================= 粒子 ================= */
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*180;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 關卡 ================= */
+  function resetToCheckpoint() {
+    cart.x=checkpoint===0?START_X:CP_X[checkpoint-1]+10;
+    cart.y=GROUND_Y-30;cart.vx=0;cart.vy=0;cart.stability=100;
+    logs=[]; // 遺失的圓木回到庫存的概念：保留 logStock
+    msg='回到檢查點 '+checkpoint;msgTimer=1.4;
+  }
+  function resetGame(){
+    chips=0;checkpoint=0;jackpots=0;shake=0;logStock=3;
+    particles=[];slot.active=false;slot.pay=null;slot.timer=0;
+    resetToCheckpoint();updateHUD();
+  }
+  function startGame(){
+    unlockAudio();resetGame();mode='playing';
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    coin();
+  }
+  function gameOver(){
+    mode='over';
+    $('finalCp').textContent=checkpoint;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;bump();
+  }
+  function win(){
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    beep(523,.12,'square',.05);setTimeout(function(){beep(659,.12,'square',.05);},110);setTimeout(function(){beep(784,.18,'square',.05);},220);
+  }
+  function addMsg(t){msg=t;msgTimer=1.5;}
+  function updateHUD(){
+    $('hChips').textContent=chips;
+    $('hCp').textContent=checkpoint+'/3';
+    $('hLogs').textContent=logStock;
+    $('hProgress').textContent=Math.round(clamp((cart.x-START_X)/(GOAL_X-START_X),0,1)*100)+'%';
+    $('hJackpot').textContent=jackpots;
+  }
+  function triggerJackpot(){
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    addMsg('JACKPOT 運輸獎勵！');updateHUD();
+  }
+
+  /* ================= 圓木拖曳 ================= */
+  function placeLog(x,y){
+    if(mode!=='playing'||logStock<=0||logs.length>=4)return;
+    if(y<80||y>GROUND_Y+10)return;
+    logs.push({x:x,y:y});logStock--;
+    beep(500,.06,'triangle',.04);
+    addMsg('放置圓木（剩 '+logStock+'）');updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt){
+    blink+=dt;shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+
+    if(slot.active){
+      if(slot.t>0){
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:15);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=120?50:18,'#ffd23f');
+          beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if(mode!=='playing')return;
+
+    // 推送
+    if(pushing){cart.vx+=60*dt;cart.vx=Math.min(cart.vx,95);}
+    else cart.vx*=Math.pow(0.4,dt);  // 放開減速
+    cart.x+=cart.vx*dt;
+    cart.x=clamp(cart.x,START_X-20,GOAL_X);
+
+    // 坑洞：若沒有圓木覆蓋則掉落
+    var overPit=false;
+    PITS.forEach(function(pt){if(cart.x>=pt[0]&&cart.x<=pt[1])overPit=true;});
+    if(overPit){
+      var covered=logs.some(function(l){return l.x>=cart.x-20&&l.x<=cart.x+30;});
+      if(!covered){
+        cart.stability-=55*dt;
+        if(cart.stability<=0){gameOver();return;}
+        if(cart.vy===0)bump();
+      } else {
+        cart.stability=Math.min(100,cart.stability+10*dt);
+      }
+    } else {
+      cart.stability=Math.min(100,cart.stability+3*dt);
+    }
+
+    // 檢查點
+    CP_X.forEach(function(cx,i){
+      if(cart.x>=cx&&checkpoint===i){
+        checkpoint=i+1;
+        var pay=100+checkpoint*50;chips+=pay;
+        burst(cart.x,cart.y,20,'#ffd23f');coin();
+        addMsg('檢查點 '+checkpoint+'！+'+pay+' 籌碼');
+        if(checkpoint%2===0)triggerJackpot();
+        logStock=Math.min(4,logStock+1); // 檢查點補給一根圓木
+        updateHUD();
+      }
+    });
+
+    // 終點
+    if(cart.x>=GOAL_X-2){
+      var bonus=300+logStock*50;chips+=bonus;
+      addMsg('送達！+'+bonus);updateHUD();
+      win();
+    }
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    // 天空渐变（日出到日落）
+    var g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#3a2a3e');g.addColorStop(.6,'#6a4a3e');g.addColorStop(1,'#a06a4a');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // 太陽
+    ctx.fillStyle='#ffd8a0';ctx.beginPath();ctx.arc(700,90,46,0,Math.PI*2);ctx.fill();
+    // 遠山
+    ctx.fillStyle='#5a4050';ctx.beginPath();ctx.moveTo(0,GROUND_Y);
+    for(var x=0;x<=W;x+=80)ctx.lineTo(x,GROUND_Y-60-Math.sin(x*0.01)*30);
+    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+
+    // 地面（含坑洞）
+    ctx.fillStyle='#4a3528';
+    var segs=[[0,PITS[0][0]],[PITS[0][1],PITS[1][0]],[PITS[1][1],W]];
+    segs.forEach(function(s){ctx.fillRect(s[0],GROUND_Y,s[1]-s[0],H-GROUND_Y);});
+    ctx.strokeStyle='#c48c46';ctx.lineWidth=2;
+    segs.forEach(function(s){ctx.beginPath();ctx.moveTo(s[0],GROUND_Y);ctx.lineTo(s[1],GROUND_Y);ctx.stroke();});
+    // 坑洞深色
+    PITS.forEach(function(pt){ctx.fillStyle='#1a1210';ctx.fillRect(pt[0],GROUND_Y,pt[1]-pt[0],H-GROUND_Y);});
+
+    // 檢查點旗幟
+    CP_X.forEach(function(cx,i){
+      ctx.fillStyle=i<checkpoint?'#7de0a0':'#c0b0a0';
+      ctx.fillRect(cx,GROUND_Y-70,4,70);
+      ctx.beginPath();ctx.moveTo(cx+4,GROUND_Y-70);ctx.lineTo(cx+40,GROUND_Y-58);ctx.lineTo(cx+4,GROUND_Y-46);ctx.fill();
+    });
+    // 終點
+    ctx.fillStyle='#ffd23f';ctx.font='bold 13px system-ui';ctx.textAlign='center';
+    ctx.fillText('🏁 GOAL',GOAL_X,GROUND_Y-40);
+
+    // 圓木
+    logs.forEach(function(l){
+      ctx.save();ctx.fillStyle='#8a5a30';ctx.beginPath();ctx.arc(l.x,l.y,16,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#d0a060';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(l.x,l.y,5,0,Math.PI*2);ctx.fill();ctx.restore();
+    });
+
+    // 托盤 + 黃金機器人
+    ctx.save();
+    ctx.fillStyle='#6a4a2a';ctx.fillRect(cart.x-28,cart.y+10,56,10);
+    ctx.strokeStyle='#c48c46';ctx.lineWidth=2;ctx.strokeRect(cart.x-28,cart.y+10,56,10);
+    ctx.fillStyle='#ffd23f';ctx.shadowColor='#ffd23f';ctx.shadowBlur=10;
+    ctx.fillRect(cart.x-12,cart.y-16,24,26);
+    ctx.shadowBlur=0;ctx.strokeStyle='#fff0b0';ctx.lineWidth=2;ctx.strokeRect(cart.x-12,cart.y-16,24,26);
+    ctx.fillStyle='#3a2418';ctx.beginPath();ctx.arc(cart.x-5,cart.y-6,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cart.x+5,cart.y-6,2.5,0,Math.PI*2);ctx.fill();
+    // 穩定性條
+    ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(cart.x-28,cart.y-28,56,5);
+    ctx.fillStyle=cart.stability>50?'#7de0a0':'#ff6b6b';ctx.fillRect(cart.x-28,cart.y-28,56*cart.stability/100,5);
+    ctx.restore();
+
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+
+    // JACKPOT
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px2=W/2-pw/2,py2=18;
+      ctx.fillStyle='rgba(20,14,10,.96)';ctx.fillRect(px2,py2,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px2,py2,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py2+16);
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px2+20+i*(rw+15),ry=py2+28;
+        ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#e8c898';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+      }
+      if(slot.pay!==null)ctx.fillStyle='#39ff88',ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py2+110);
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-26,W,26);
+      ctx.fillStyle='#ffe27a';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-8);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  function getPos(e){
+    var rect=canvas.getBoundingClientRect();
+    return {x:(e.clientX-rect.left)/rect.width*W,y:(e.clientY-rect.top)/rect.height*H};
+  }
+  var dragging=false;
+  canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();unlockAudio();
+    var p=getPos(e);
+    // 點圓木附近 → 拖曳到新位置
+    for(var i=logs.length-1;i>=0;i--){
+      if(Math.abs(p.x-logs[i].x)<22&&Math.abs(p.y-logs[i].y)<22){
+        dragging=i;return;
+      }
+    }
+    // 否則放置新圓木
+    placeLog(p.x,p.y);
+  });
+  canvas.addEventListener('pointermove',function(e){
+    if(dragging<0)return;
+    var p=getPos(e);
+    logs[dragging].x=clamp(p.x,0,W);logs[dragging].y=clamp(p.y,80,GROUND_Y+10);
+  });
+  canvas.addEventListener('pointerup',function(){dragging=-1;});
+  canvas.addEventListener('pointerleave',function(){dragging=-1;});
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(e.code==='Space'){e.preventDefault();pushing=true;}
+    if(e.code==='KeyR')resetToCheckpoint();
+  });
+  window.addEventListener('keyup',function(e){
+    if(e.code==='Space')pushing=false;
+  });
+  $('pushBtn').addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();pushing=true;});
+  $('pushBtn').addEventListener('pointerup',function(){pushing=false;});
+  $('pushBtn').addEventListener('pointerleave',function(){pushing=false;});
+  $('resetBtn').addEventListener('click',function(){resetToCheckpoint();});
+  $('addLogBtn').addEventListener('click',function(){
+    if(mode!=='playing'||chips<50)return;
+    chips-=50;logStock++;coin();addMsg('購買圓木（剩 '+logStock+'）');updateHUD();
+  });
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
