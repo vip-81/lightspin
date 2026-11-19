@@ -7,9 +7,9 @@
 
   <!-- ==================== 基礎 SEO Meta ==================== -->
   <!-- TODO 上線前：將 vip-81.github.io/lightspin 換成你的正式網域 -->
-  <title>LightSpin 輕量博弈實驗室｜六款零依賴 HTML5 博弈遊戲</title>
-  <meta name="description" content="LightSpin 開源 HTML5 博弈遊戲實驗站，收錄六款零依賴作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）。展示 RNG、RTP、FSM、物件池與 60 FPS 渲染，並完整實作 SEO 與 GEO。">
-  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 打磚塊, 5x3 滾輪控制器, 黃金末班車, 帶電賭徒, 發條大盜, 蒸氣龐克, 平台跳躍, 迷霧追逐, 通電移動, 生存建設, 中獎線, Paylines, 超調回彈, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
+  <title>LightSpin 輕量博弈實驗室｜七款零依賴 HTML5 博弈遊戲</title>
+  <meta name="description" content="LightSpin 開源 HTML5 博弈遊戲實驗站，收錄七款零依賴作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台）、古機拆解（三階段拆解 + 倒帶）。展示 RNG、RTP、FSM、物件池與 60 FPS 渲染，並完整實作 SEO 與 GEO。">
+  <meta name="keywords" content="HTML5 博弈遊戲, Canvas 老虎機, 打磚塊, 5x3 滾輪控制器, 黃金末班車, 帶電賭徒, 發條大盜, 古機拆解, 蒸氣龐克, 平台跳躍, 三階段拆解, 慢動作, 倒帶, 迷霧追逐, 通電移動, 生存建設, 中獎線, Paylines, 超調回彈, 開源遊戲, JavaScript 遊戲開發, RTP, RNG, 有限狀態機, 物件池, GEO, SEO, llms.txt, 繁體中文">
   <meta name="author" content="LightSpin 開發團隊">
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
   <meta name="googlebot" content="index,follow">
@@ -27,15 +27,15 @@
   <meta property="og:site_name" content="LightSpin 輕量博弈實驗室">
   <meta property="og:locale" content="zh_TW">
   <meta property="og:url" content="https://vip-81.github.io/lightspin/">
-  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜六款零依賴 HTML5 博弈遊戲">
-  <meta property="og:description" content="六款零依賴 HTML5 Canvas 作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪控制器、黃金末班車、帶電賭徒、發條大盜。展示 FSM、物件池、超調回彈與 SEO/GEO 最佳實踐。">
+  <meta property="og:title" content="LightSpin 輕量博弈實驗室｜七款零依賴 HTML5 博弈遊戲">
+  <meta property="og:description" content="七款零依賴 HTML5 Canvas 作品：老虎機、打磚塊、滾輪控制器、黃金末班車、帶電賭徒、發條大盜、古機拆解。展示 FSM、物件池、超調回彈與 SEO/GEO 最佳實踐。">
   <meta property="og:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
   <meta property="og:image:alt" content="LightSpin 老虎機遊戲介面示意圖">
 
   <!-- ==================== Twitter Card ==================== -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜六款零依賴 HTML5 博弈遊戲">
-  <meta name="twitter:description" content="六款零依賴 HTML5 Canvas 作品：老虎機、霓虹打磚塊、5×3 滾輪控制器、黃金末班車、帶電賭徒、發條大盜，含完整 SEO 與 GEO 最佳實踐。">
+  <meta name="twitter:title" content="LightSpin 輕量博弈實驗室｜七款零依賴 HTML5 博弈遊戲">
+  <meta name="twitter:description" content="七款零依賴 HTML5 Canvas 作品：老虎機、打磚塊、滾輪控制器、黃金末班車、帶電賭徒、發條大盜、古機拆解，含完整 SEO 與 GEO 最佳實踐。">
   <meta name="twitter:image" content="https://vip-81.github.io/lightspin/assets/og-image.svg">
 
   <!-- ==================== PWA / 效能 ==================== -->
@@ -160,6 +160,18 @@
         "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
       },
       {
+        "@type": "VideoGame",
+        "@id": "https://vip-81.github.io/lightspin/#relic-breaker",
+        "name": "古機拆解",
+        "url": "https://vip-81.github.io/lightspin/relic-breaker.html",
+        "description": "改編自 Ludum Dare 60《Some Assembly Required》的 Casino 動作遊戲：剪連線、拆護甲、破核心三階段拆解怪物，放慢時間對齊攻擊、倒帶挽救失誤，收集籌碼並觸發 JACKPOT。",
+        "genre": ["Action", "Arcade", "Casino"],
+        "inLanguage": "zh-Hant",
+        "isAccessibleForFree": true,
+        "playMode": "SinglePlayer",
+        "publisher": { "@id": "https://vip-81.github.io/lightspin/#organization" }
+      },
+      {
         "@type": "ItemList",
         "@id": "https://vip-81.github.io/lightspin/#works",
         "name": "LightSpin 作品集",
@@ -169,7 +181,8 @@
           { "@type": "ListItem", "position": 3, "name": "5×3 滾輪停止控制器", "url": "https://vip-81.github.io/lightspin/reel-demo.html" },
           { "@type": "ListItem", "position": 4, "name": "黃金末班車", "url": "https://vip-81.github.io/lightspin/jackpot-express.html" },
           { "@type": "ListItem", "position": 5, "name": "帶電賭徒", "url": "https://vip-81.github.io/lightspin/power-chaser.html" },
-          { "@type": "ListItem", "position": 6, "name": "發條大盜", "url": "https://vip-81.github.io/lightspin/gear-heist.html" }
+          { "@type": "ListItem", "position": 6, "name": "發條大盜", "url": "https://vip-81.github.io/lightspin/gear-heist.html" },
+          { "@type": "ListItem", "position": 7, "name": "古機拆解", "url": "https://vip-81.github.io/lightspin/relic-breaker.html" }
         ]
       },
       {
@@ -221,7 +234,7 @@
             "name": "LightSpin 目前有哪些可玩的作品？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "共六款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動解謎）、發條大盜（改編自 Dungeon Gear 的蒸氣龐克平台偷引擎）。六者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。"
+              "text": "共七款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）、古機拆解（改編自 Some Assembly Required 的三階段拆解）。七者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。"
             }
           }
         ]
@@ -271,7 +284,7 @@
           <p class="eyebrow">開源 · 輕量 · 60 FPS</p>
           <h1 id="hero-title">純 Canvas 打造的輕量博弈遊戲實驗室</h1>
           <p class="lead">
-            LightSpin 收錄六款零依賴 HTML5 作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）與發條大盜（蒸氣龐克平台）。
+            LightSpin 收錄七款零依賴 HTML5 作品：3 軸老虎機、霓虹打磚塊、5×3 滾輪控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台）與古機拆解（三階段拆解）。
             展示有限狀態機、物件池、超調回彈與 60 FPS 渲染，並完整實作 SEO 與生成式引擎優化（GEO）。
           </p>
           <div class="hero-actions">
@@ -327,7 +340,7 @@
       <div class="container">
         <header class="section-head">
           <p class="eyebrow">Our Works</p>
-          <h2 id="works-title">六款零依賴 HTML5 作品</h2>
+          <h2 id="works-title">七款零依賴 HTML5 作品</h2>
           <p>所有作品皆為靜態檔案，無需建置工具或外部 CDN，可同時部署到 GitHub Pages 與 Cloudflare Pages。</p>
         </header>
 
@@ -367,6 +380,12 @@
             <h3>發條大盜</h3>
             <p>改編自 Ludum Dare 60《Dungeon Gear》：蒸氣龐克 2D 平台跳躍，收集籌碼、踩 JACKPOT 機台抽獎、避開蒸氣陷阱，偷走引擎逃出設施。</p>
             <a href="gear-heist.html">開始行動 <span aria-hidden="true">↗</span></a>
+          </article>
+          <article class="work-card">
+            <span class="work-tag" aria-hidden="true">07 · 拆解動作</span>
+            <h3>古機拆解</h3>
+            <p>改編自 Ludum Dare 60《Some Assembly Required》：剪連線、拆護甲、破核心三階段拆解，慢動作對齊攻擊、倒帶挽救失誤，收集籌碼觸發 JACKPOT。</p>
+            <a href="relic-breaker.html">開始拆解 <span aria-hidden="true">↗</span></a>
           </article>
         </div>
       </div>
@@ -511,7 +530,7 @@
           </details>
           <details>
             <summary>LightSpin 目前有哪些可玩的作品？</summary>
-            <p>共六款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動解謎）、發條大盜（改編自 Dungeon Gear 的蒸氣龐克平台偷引擎）。六者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。</p>
+            <p>共七款：3 軸 Canvas 老虎機（首頁內可直接試玩）、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）、古機拆解（改編自 Some Assembly Required 的三階段拆解）。七者皆為零依賴靜態檔案，可分別在 GitHub Pages 與 Cloudflare Pages 上運行。</p>
           </details>
         </div>
       </div>
