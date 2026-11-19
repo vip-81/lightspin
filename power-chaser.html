@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#07051a">
+<meta name="description" content="帶電賭徒：改編自 Ludum Dare 60 冠軍《Light Seeker》的 Casino 解謎遊戲。機器人只能在通電時移動，收集籌碼、在 JACKPOT 機台抽獎、趕在電力耗盡前抵達出口。">
+<title>帶電賭徒 · POWER CHASER｜LightSpin</title>
+<style>
+/* ============================================================
+   賽博朋克電力主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(0,229,255,.14), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(185,103,255,.14), transparent 42%),
+    #04030f;
+  color:#e8f6ff;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   text-shadow:0 0 10px rgba(0,229,255,.85),0 0 26px rgba(185,103,255,.5)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#7de7ff;opacity:.8}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:1px solid rgba(0,229,255,.35);
+  border-radius:12px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(0,229,255,.15),inset 0 0 30px rgba(185,103,255,.07)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(10,6,30,.76),rgba(4,2,12,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,38px);letter-spacing:.1em;color:#fff;
+  text-shadow:0 0 14px rgba(0,229,255,.9),0 0 30px rgba(185,103,255,.5)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#a9c6e8;max-width:46ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:44px;padding:9px 20px;border-radius:10px;font:inherit;
+  font-weight:800;letter-spacing:.08em;border:0;color:#06121a;
+  background:linear-gradient(135deg,#00e5ff,#7df9ff);box-shadow:0 0 16px rgba(0,229,255,.5);
+  transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 26px rgba(0,229,255,.85)}
+button.neon:active{transform:translateY(0)}
+button.pink{background:linear-gradient(135deg,#ff2e88,#ff8ac4);box-shadow:0 0 16px rgba(255,46,136,.5);color:#1a0410}
+
+/* 觸控方向鍵 */
+.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,46px);
+  gap:6px;justify-content:center;margin:10px auto 0}
+.pad button{min-height:42px;border-radius:9px;font-size:18px;font-weight:900;
+  background:rgba(0,229,255,.10);color:#7de7ff;border:1px solid rgba(0,229,255,.35);
+  touch-action:none;user-select:none}
+.pad button:active{background:rgba(0,229,255,.35)}
+.pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}
+.pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
+.pad .spin{grid-column:4;grid-row:1/3;width:90px;background:linear-gradient(135deg,#ff2e88,#ff8ac4);
+  color:#1a0410;border:0;font-size:14px}
+.pad-wrap{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(0,229,255,.10),rgba(185,103,255,.06));
+  border:1px solid rgba(0,229,255,.22);border-radius:9px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.08em;color:#7de7ff;opacity:.85}
+.hud strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;color:#fff;margin-top:2px}
+.hud .power strong{color:#ffd23f}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#8fa6c8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>帶電賭徒</h1>
+  <p class="sub">POWER CHASER · 沒電就動不了</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="帶電賭徒遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>POWER ON</h2>
+      <p>你是廢棄發電廠裡的機器人，<b style="color:#ffd23f">只能在通電時移動</b>。<br>
+         沿導電軌道收集籌碼、在 <b style="color:#ff2e88">JACKPOT</b> 機台抽獎，<br>
+         赶在電力耗盡前抵達出口！</p>
+      <button class="neon" id="startBtn">啟動電源</button>
+      <p style="font-size:11px;opacity:.7">方向鍵/WASD 移動 · Space 抽獎 · 觸控可用下方按鈕</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>POWER DOWN</h2>
+      <p>電力耗盡，你被困在軌道上</p>
+      <p>抵達關卡 <b id="finalLevel">1</b> · 總籌碼 <b id="finalChips">0</b></p>
+      <button class="neon pink" id="againBtn">重新啟動</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>LIGHT RESTORED</h2>
+      <p>你把所有光帶回了發電廠！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon pink" id="winAgainBtn">再玩一次</button>
+    </div>
+
+    <div class="overlay hidden" id="clearScreen" style="background:rgba(4,2,12,.8)">
+      <h2 style="color:#39ff88">LEVEL CLEAR</h2>
+      <p>電力恢復，前往下一區…</p>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div><span>關卡</span><strong id="hLevel">1</strong></div>
+    <div class="power"><span>電力</span><strong id="hEnergy">24</strong></div>
+    <div><span>籌碼/目標</span><strong id="hChips">0/8</strong></div>
+    <div><span>總分</span><strong id="hTotal">0</strong></div>
+  </div>
+
+  <div class="pad-wrap">
+    <div class="pad">
+      <button class="up" data-dir="up" aria-label="上">▲</button>
+      <button class="left" data-dir="left" aria-label="左">◀</button>
+      <button class="down" data-dir="down" aria-label="下">▼</button>
+      <button class="right" data-dir="right" aria-label="右">▶</button>
+    </div>
+    <button class="neon pink spin" id="spinBtn" style="min-width:110px">JACKPOT 抽獎</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 冠軍《Light Seeker》（Alexascher &amp; ingi）的「通電才能移動」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範，不涉及真實博弈。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480, CELL = 56;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  var SYMBOLS = [
+    { s: '7', c: '#ff2e88', pay: 30 },
+    { s: '★', c: '#ffd23f', pay: 12 },
+    { s: '◆', c: '#00e5ff', pay: 12 },
+    { s: '▲', c: '#39ff88', pay: 6 },
+    { s: '●', c: '#b967ff', pay: 6 }
+  ];
+
+  // 地圖：S 起點 / - 導電軌道 / . 空地 / P 電源 / C 籌碼 / J 老虎機 / E 出口
+  var LEVELS = [
+    [
+      'S--C---P--',
+      '-..-..-..-',
+      '-..-..-..-',
+      '--C-J-C---',
+      '-..-..-..-',
+      '-..-..-..-',
+      '--P--E--C-'
+    ],
+    [
+      'S--C--P---C-',
+      '-..-..-..-..',
+      '--C-J---J-C-',
+      '-..-..-..-..',
+      '-P---C---P--',
+      '-..-..-..-..',
+      '--C--E--C---'
+    ],
+    [
+      'S--C--J--P--C-',
+      '-..-..-..-..-.',
+      '--P---C---J---',
+      '-..-..-..-..-.',
+      '-C---J---P---C',
+      '-..-..-..-..-.',
+      '--C---E---C---'
+    ]
+  ];
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';           // start | playing | clear | over | win
+  var level = 0;
+  var map = [];                 // 二维字元陣列
+  var cols = 0, rows = 0;
+  var gx = 0, gy = 0;           // 格子座標
+  var px = 0, py = 0;           // 像素座標（插值）
+  var energy = 24, maxEnergy = 24;
+  var chips = 0, totalChips = 0;
+  var target = 8;
+  var moveDir = null, moveCd = 0;
+  var chargeTimer = 0;
+  var shake = 0, blink = 0;
+  var slot = { active: false, reels: ['7', '★', '◆'], spinning: false, t: 0, pay: null, timer: 0 };
+  var msg = '', msgTimer = 0;
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+
+  /* ================= 粒子 ================= */
+  var pool = [];
+  for (var i = 0; i < 140; i++) {
+    pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, color: '#ffd23f', size: 3 });
+  }
+  function burst(x, y, n, color) {
+    var made = 0;
+    for (var i = 0; i < pool.length && made < n; i++) {
+      var p = pool[i]; if (p.active) continue;
+      var a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 200;
+      p.active = true; p.x = x; p.y = y;
+      p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp - 80;
+      p.maxLife = .4 + Math.random() * .5; p.life = p.maxLife;
+      p.color = color; p.size = 2 + Math.random() * 3; made++;
+    }
+  }
+  function updateParticles(dt) {
+    for (var i = 0; i < pool.length; i++) {
+      var p = pool[i]; if (!p.active) continue;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; p.life -= dt;
+      if (p.life <= 0) p.active = false;
+    }
+  }
+
+  /* ================= 關卡載入 ================= */
+  function loadLevel(idx) {
+    var raw = LEVELS[idx];
+    rows = raw.length; cols = raw[0].length;
+    map = raw.map(function (line) { return line.split(''); });
+    for (var y = 0; y < rows; y++) {
+      for (var x = 0; x < cols; x++) {
+        if (map[y][x] === 'S') { gx = x; gy = y; map[y][x] = '-'; }
+      }
+    }
+    var ox = (W - cols * CELL) / 2, oy = (H - rows * CELL) / 2;
+    px = ox + gx * CELL + CELL / 2;
+    py = oy + gy * CELL + CELL / 2;
+    energy = maxEnergy; chips = 0;
+    target = 8 + idx * 4;
+    moveDir = null; moveCd = 0; chargeTimer = 0;
+    slot.active = false; slot.spinning = false; slot.pay = null;
+    updateHUD();
+  }
+  function offset() { return { x: (W - cols * CELL) / 2, y: (H - rows * CELL) / 2 }; }
+  function tileAt(x, y) {
+    if (x < 0 || y < 0 || x >= cols || y >= rows) return '.';
+    return map[y][x];
+  }
+
+  /* ================= 流程 ================= */
+  function startGame() {
+    unlockAudio();
+    mode = 'playing'; level = 0; totalChips = 0; maxEnergy = 24;
+    shake = 0; blink = 0; msg = ''; msgTimer = 0;
+    for (var i = 0; i < pool.length; i++) pool[i].active = false;
+    loadLevel(0);
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    $('clearScreen').classList.add('hidden');
+    beep(520, .08, 'triangle', .05);
+  }
+  function gameOver() {
+    mode = 'over';
+    $('finalLevel').textContent = level + 1;
+    $('finalChips').textContent = totalChips;
+    $('overScreen').classList.remove('hidden');
+    shake = 1; beep(120, .35, 'sawtooth', .06);
+  }
+  function levelClear() {
+    mode = 'clear';
+    $('clearScreen').classList.remove('hidden');
+    beep(880, .16, 'sine', .06);
+    setTimeout(function () { beep(1174, .2, 'sine', .05); }, 110);
+    setTimeout(function () {
+      $('clearScreen').classList.add('hidden');
+      if (level + 1 >= LEVELS.length) {
+        mode = 'win';
+        $('winScore').textContent = totalChips + ' 籌碼';
+        $('winScreen').classList.remove('hidden');
+      } else {
+        level++; loadLevel(level); mode = 'playing';
+      }
+    }, 1500);
+  }
+  function showMsg(text) { msg = text; msgTimer = 1.6; }
+
+  function updateHUD() {
+    $('hLevel').textContent = level + 1;
+    $('hEnergy').textContent = Math.max(0, Math.ceil(energy));
+    $('hChips').textContent = chips + '/' + target;
+    $('hTotal').textContent = totalChips;
+    $('spinBtn').disabled = (mode !== 'playing' || tileAt(gx, gy) !== 'J' || energy < 8);
+  }
+
+  /* ================= 移動 ================= */
+  function tryMove(dx, dy) {
+    if (mode !== 'playing' || energy <= 0 || slot.active) return;
+    var nx = gx + dx, ny = gy + dy;
+    var t = tileAt(nx, ny);
+    if (t === '.') return;
+    gx = nx; gy = ny; energy--;
+    beep(240 + energy * 6, .03, 'square', .025);
+
+    if (t === 'C') {
+      chips++; totalChips++;
+      map[ny][nx] = '-';
+      var o = offset(); burst(o.x + nx * CELL + CELL / 2, o.y + ny * CELL + CELL / 2, 12, '#ffd23f');
+      beep(740, .08, 'sine', .045);
+    } else if (t === 'J') {
+      showMsg('按 SPACE 抽獎（耗 8 電力）');
+    } else if (t === 'E') {
+      if (chips >= target) { levelClear(); }
+      else showMsg('籌碼不足！需要 ' + target + ' 個');
+    }
+    updateHUD();
+  }
+
+  /* ================= 抽獎 ================= */
+  function doSpin() {
+    if (mode !== 'playing' || tileAt(gx, gy) !== 'J' || energy < 8 || slot.spinning) return;
+    energy -= 8; slot.spinning = true; slot.t = .9; slot.pay = null;
+    slot.reels = ['7', '★', '◆'];
+    beep(320, .05, 'square', .035);
+    updateHUD();
+  }
+  function settle() {
+    var a = slot.reels[0], b = slot.reels[1], c = slot.reels[2];
+    var pay;
+    if (a === b && b === c) pay = 30;
+    else if (a === b || b === c || a === c) pay = 12;
+    else pay = 4;
+    chips += pay; totalChips += pay;
+    slot.pay = pay;
+    var o = offset(); burst(o.x + gx * CELL + CELL / 2, o.y + gy * CELL + CELL / 2, pay >= 30 ? 50 : 16, '#ff2e88');
+    shake = Math.min(1, shake + (pay >= 30 ? .6 : .2));
+    beep(pay >= 30 ? 1046 : 660, .14, 'sine', .06);
+    updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    updateParticles(dt);
+    shake = Math.max(0, shake - dt * 2.5);
+    blink += dt;
+    if (msgTimer > 0) msgTimer -= dt;
+
+    if (slot.spinning) {
+      slot.t -= dt;
+      if (slot.t > 0) {
+        for (var i = 0; i < 3; i++) if (Math.random() < .35) slot.reels[i] = SYMBOLS[rand(SYMBOLS.length)].s;
+      } else {
+        // 停輪：逐軸固定
+        if (slot.pay === null && slot.timer === 0) {
+          for (var j = 0; j < 3; j++) slot.reels[j] = SYMBOLS[rand(SYMBOLS.length)].s;
+          settle(); slot.timer = .01;
+        }
+        if (slot.timer > 0) { slot.timer += dt; if (slot.timer > .6) { slot.spinning = false; slot.timer = 0; } }
+      }
+    }
+
+    if (mode !== 'playing') return;
+
+    // 連續移動
+    if (moveCd > 0) moveCd -= dt;
+    if (moveDir && moveCd <= 0 && !slot.spinning) {
+      var d = {
+        up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0]
+      }[moveDir];
+      if (d) { tryMove(d[0], d[1]); moveCd = .13; }
+    }
+
+    // 電源節點充電
+    if (tileAt(gx, gy) === 'P' && energy < maxEnergy) {
+      chargeTimer += dt;
+      if (chargeTimer >= .28) { chargeTimer = 0; energy = Math.min(maxEnergy, energy + 3); updateHUD(); beep(560, .05, 'sine', .03); }
+    } else chargeTimer = 0;
+
+    // 電力耗盡且不在電源上 → 結束
+    if (energy <= 0 && tileAt(gx, gy) !== 'P') gameOver();
+
+    // 像素插值
+    var o = offset();
+    var tx = o.x + gx * CELL + CELL / 2, ty = o.y + gy * CELL + CELL / 2;
+    px += (tx - px) * Math.min(1, dt * 16);
+    py += (ty - py) * Math.min(1, dt * 16);
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  fit();
+  window.addEventListener('resize', fit);
+
+  function drawMap() {
+    var o = offset();
+    ctx.fillStyle = '#07051a'; ctx.fillRect(0, 0, W, H);
+    for (var y = 0; y < rows; y++) {
+      for (var x = 0; x < cols; x++) {
+        var t = map[y][x], rx = o.x + x * CELL, ry = o.y + y * CELL;
+        if (t === '.') {
+          ctx.fillStyle = 'rgba(255,255,255,.015)'; ctx.fillRect(rx + 2, ry + 2, CELL - 4, CELL - 4);
+          continue;
+        }
+        // 導電軌道
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,229,255,.08)'; ctx.fillRect(rx + 2, ry + 2, CELL - 4, CELL - 4);
+        ctx.strokeStyle = 'rgba(0,229,255,.35)'; ctx.lineWidth = 1;
+        ctx.strokeRect(rx + 2.5, ry + 2.5, CELL - 5, CELL - 5);
+        // 電流脈衝
+        ctx.globalAlpha = .25 + Math.sin(blink * 4 + x + y) * .15;
+        ctx.fillStyle = '#00e5ff'; ctx.fillRect(rx + CELL / 2 - 1, ry + 6, 2, CELL - 12);
+        ctx.restore();
+
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        var cx = rx + CELL / 2, cy = ry + CELL / 2;
+        if (t === 'P') {
+          ctx.save(); ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 14;
+          ctx.fillStyle = '#ffd23f'; ctx.font = '900 28px system-ui';
+          ctx.fillText('⚡', cx, cy + 1); ctx.restore();
+        } else if (t === 'C') {
+          ctx.save(); ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 10;
+          ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#7a5a00'; ctx.font = '900 11px system-ui'; ctx.fillText('$', cx, cy + 1); ctx.restore();
+        } else if (t === 'J') {
+          ctx.save(); ctx.shadowColor = '#ff2e88'; ctx.shadowBlur = 14;
+          ctx.fillStyle = '#ff2e88'; ctx.font = '900 26px system-ui'; ctx.fillText('7', cx, cy + 1); ctx.restore();
+        } else if (t === 'E') {
+          ctx.save(); ctx.shadowColor = '#39ff88'; ctx.shadowBlur = 14;
+          ctx.fillStyle = '#39ff88'; ctx.font = '900 22px system-ui'; ctx.fillText('E', cx, cy + 1); ctx.restore();
+        }
+      }
+    }
+  }
+
+  function drawRobot() {
+    ctx.save();
+    if (blink % 1 < .12 && energy <= 5) ctx.globalAlpha = .4;
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#0b2740';
+    ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = energy > 0 ? '#7df9ff' : '#ff6b8b';
+    ctx.beginPath(); ctx.arc(px - 5, py - 3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px + 5, py - 3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ff2e88'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px, py + 5, 5, .2, Math.PI - .2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSlotPanel() {
+    if (!slot.spinning && slot.pay === null) return;
+    ctx.save();
+    var pw = 260, ph = 130, x = W / 2 - pw / 2, y = 18;
+    ctx.fillStyle = 'rgba(6,4,20,.94)';
+    ctx.beginPath(); ctx.rect(x, y, pw, ph); ctx.fill();
+    ctx.strokeStyle = '#ff2e88'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ff2e88'; ctx.font = 'bold 12px system-ui';
+    ctx.fillText('JACKPOT', W / 2, y + 16);
+    for (var i = 0; i < 3; i++) {
+      var rw = 60, rx = x + 22 + i * (rw + 14), ry = y + 30;
+      ctx.fillStyle = '#0c0a22'; ctx.fillRect(rx, ry, rw, 58);
+      var sym = null;
+      for (var k = 0; k < SYMBOLS.length; k++) if (SYMBOLS[k].s === slot.reels[i]) sym = SYMBOLS[k];
+      ctx.strokeStyle = sym ? sym.c : '#7de7ff'; ctx.lineWidth = 1.5; ctx.strokeRect(rx, ry, rw, 58);
+      ctx.fillStyle = sym ? sym.c : '#fff'; ctx.font = '900 34px system-ui';
+      ctx.fillText(slot.reels[i], rx + rw / 2, ry + 30);
+    }
+    if (slot.pay !== null) {
+      ctx.fillStyle = '#39ff88'; ctx.font = 'bold 15px system-ui';
+      ctx.fillText('+ ' + slot.pay + ' 籌碼', W / 2, y + 108);
+    }
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake * 7, (Math.random() - .5) * shake * 7);
+    if (cols) { drawMap(); drawRobot(); }
+    for (var i = 0; i < pool.length; i++) {
+      var p = pool[i]; if (!p.active) continue;
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    drawSlotPanel();
+    if (msgTimer > 0) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, msgTimer);
+      ctx.fillStyle = '#ffd23f'; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(msg, W / 2, H - 12); ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last = performance.now(), acc = 0;
+  function frame(now) {
+    var dt = (now - last) / 1000; last = now;
+    if (!isFinite(dt) || dt < 0) dt = 0;
+    if (dt > .05) dt = .05;
+    acc += dt; var step = 1 / 120, guard = 0;
+    while (acc >= step && guard++ < 12) { update(step); acc -= step; }
+    render(); requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  window.addEventListener('keydown', function (e) {
+    unlockAudio();
+    var mapKey = {
+      ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
+      ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right'
+    };
+    if (mapKey[e.code]) { e.preventDefault(); moveDir = mapKey[e.code]; }
+    if (e.code === 'Space') { e.preventDefault(); doSpin(); }
+  });
+  window.addEventListener('keyup', function (e) {
+    var mapKey = {
+      ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
+      ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right'
+    };
+    if (mapKey[e.code] && moveDir === mapKey[e.code]) moveDir = null;
+  });
+
+  document.querySelectorAll('.pad button[data-dir]').forEach(function (btn) {
+    var dir = btn.getAttribute('data-dir');
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); unlockAudio(); moveDir = dir; });
+    btn.addEventListener('pointerup', function () { if (moveDir === dir) moveDir = null; });
+    btn.addEventListener('pointerleave', function () { if (moveDir === dir) moveDir = null; });
+  });
+
+  $('startBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+  $('againBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+  $('winAgainBtn').addEventListener('click', function (e) { e.stopPropagation(); startGame(); });
+  $('spinBtn').addEventListener('click', function (e) { e.stopPropagation(); doSpin(); });
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
