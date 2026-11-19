@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1a1008">
+<meta name="description" content="發條大盜：改編自 Ludum Dare 60《Dungeon Gear》的蒸氣龐克 Casino 平台遊戲。跳躍穿梭、收集籌碼、在 JACKPOT 機台抽獎，避開蒸氣陷阱，偷走引擎逃出設施。">
+<title>發條大盜 · GEAR HEIST｜LightSpin</title>
+<style>
+/* ============================================================
+   蒸氣龐克視覺：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,170,60,.14), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(120,80,40,.18), transparent 42%),
+    #0d0906;
+  color:#f5e6cf;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#ffd9a0;text-shadow:0 0 10px rgba(255,170,60,.7),0 0 26px rgba(120,80,40,.6)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#d9a86a;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:2px solid rgba(196,140,70,.5);
+  border-radius:10px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(196,140,70,.2),inset 0 0 40px rgba(0,0,0,.6)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(30,18,8,.82),rgba(10,6,3,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#ffd9a0;
+  text-shadow:0 0 14px rgba(255,170,60,.8),0 0 30px rgba(120,80,40,.6)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#d9c4a6;max-width:46ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:44px;padding:9px 20px;border-radius:8px;font:inherit;
+  font-weight:800;letter-spacing:.08em;border:2px solid #c48c46;color:#2a1608;
+  background:linear-gradient(135deg,#ffb347,#ffd98a);box-shadow:0 0 16px rgba(255,170,60,.4);
+  transition:transform .12s ease,box-shadow .2s ease}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 26px rgba(255,170,60,.8)}
+button.neon:active{transform:translateY(0)}
+button.pink{background:linear-gradient(135deg,#ff6b35,#ffb347);color:#2a1004}
+
+/* 觸控 */
+.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:42px;gap:6px;
+  justify-content:center;margin:10px auto 0}
+.pad button{min-height:40px;border-radius:8px;font-size:18px;font-weight:900;
+  background:rgba(196,140,70,.12);color:#ffd9a0;border:1px solid rgba(196,140,70,.45);
+  touch-action:none;user-select:none}
+.pad button:active{background:rgba(196,140,70,.4)}
+.pad .spin{grid-column:4;width:110px;background:linear-gradient(135deg,#ff6b35,#ffb347);color:#2a1004;border:0;font-size:13px}
+.pad-wrap{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(196,140,70,.14),rgba(80,50,20,.1));
+  border:1px solid rgba(196,140,70,.3);border-radius:8px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.08em;color:#d9a86a}
+.hud strong{display:block;font-size:16px;color:#ffd9a0;margin-top:2px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#b9a184;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>發條大盜</h1>
+  <p class="sub">GEAR HEIST · 偷走引擎，逃出設施</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="發條大盜遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>STEAMPUNK HEIST</h2>
+      <p>你是設施裡的消耗品機器人。<br>
+         跳躍穿梭、收集<b style="color:#ffd23f">籌碼</b>、踩上 <b style="color:#ff6b35">JACKPOT</b> 機台抽獎，<br>
+         避開蒸氣陷阱，抵達最右側偷走<b style="color:#ffb347">引擎</b>！</p>
+      <button class="neon" id="startBtn">開始行動</button>
+      <p style="font-size:11px;opacity:.75">← → / A D 移動 · Space/W/↑ 跳躍 · 觸控可用下方按鈕</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>CAPTURED</h2>
+      <p>生命耗盡，被設施捕獲</p>
+      <p>帶走籌碼 <b id="finalChips">0</b></p>
+      <button class="neon pink" id="againBtn">再試一次</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>ENGINE SECURED</h2>
+      <p>你偷走引擎並逃出了設施！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon pink" id="winAgainBtn">再來一票</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>生命</span><strong id="hLives">3</strong></div>
+    <div><span>進度</span><strong id="hProgress">0%</strong></div>
+    <div><span>引擎</span><strong id="hEngine">未取得</strong></div>
+  </div>
+
+  <div class="pad-wrap">
+    <div class="pad">
+      <button data-key="left" aria-label="左">◀</button>
+      <button data-key="right" aria-label="右">▶</button>
+      <button class="spin" data-key="jump" aria-label="跳躍">JUMP 跳躍</button>
+    </div>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Dungeon Gear》（Gora 等）的蒸氣龐克 2D 平台 + 偷引擎逃離機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範，不涉及真實博弈。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480, LEVEL_W = 2600;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  /* ================= 關卡資料 ================= */
+  var platforms = [
+    {x:0,y:420,w:520,h:60}, {x:580,y:420,w:440,h:60},
+    {x:1080,y:420,w:420,h:60}, {x:1560,y:420,w:440,h:60},
+    {x:2060,y:420,w:540,h:60},
+    {x:180,y:330,w:120}, {x:380,y:270,w:110},
+    {x:640,y:340,w:140}, {x:840,y:280,w:120},
+    {x:1140,y:330,w:130}, {x:1340,y:260,w:110},
+    {x:1640,y:330,w:140}, {x:1860,y:270,w:120},
+    {x:2160,y:330,w:130}
+  ];
+  var coins = [];
+  [120,260,400,620,760,900,1120,1260,1400,1600,1740,1880,2100,2240,2380,
+   210,410,670,870,1170,1360,1670,1880,2180].forEach(function (x, i) {
+    var py = 390;
+    for (var p = 0; p < platforms.length; p++) {
+      var pf = platforms[p];
+      if (x >= pf.x - 20 && x <= pf.x + pf.w + 20 && pf.y < 420) { py = pf.y - 26; break; }
+    }
+    coins.push({x:x, y:py, taken:false, spin:rand(6)});
+  });
+
+  var jackpots = [
+    {x:470, y:376, used:false},
+    {x:1480, y:376, used:false},
+    {x:2280, y:376, used:false}
+  ];
+  var steams = [
+    {x:700, period:2.2, on:0.9, y0:420}, {x:1240, period:1.9, on:0.8, y0:420},
+    {x:1780, period:2.0, on:1.0, y0:420}, {x:2120, period:1.7, on:0.7, y0:420}
+  ];
+  var engine = {x:2500, y:356};
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';   // start | playing | over | win
+  var player = {x:60, y:360, vx:0, vy:0, w:24, h:30, onGround:false, face:1};
+  var camX = 0, chips = 0, lives = 3, gotEngine = false;
+  var keys = {left:false, right:false, jump:false};
+  var jumpPressed = false, shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var slot = {active:false, reels:['7','★','◆'], t:0, pay:null, timer:0};
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+
+  /* ================= 粒子 ================= */
+  var pool = [];
+  for (var i = 0; i < 160; i++) pool.push({active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:1,color:'#ffd23f',size:3});
+  function burst(x,y,n,color){
+    var made=0;
+    for(var i=0;i<pool.length&&made<n;i++){
+      var p=pool[i]; if(p.active)continue;
+      var a=Math.random()*Math.PI*2, s=60+Math.random()*220;
+      p.active=true;p.x=x;p.y=y;p.vx=Math.cos(a)*s;p.vy=Math.sin(a)*s-120;
+      p.maxLife=.4+Math.random()*.5;p.life=p.maxLife;p.color=color;p.size=2+Math.random()*3;made++;
+    }
+  }
+  function updateParticles(dt){
+    for(var i=0;i<pool.length;i++){var p=pool[i];if(!p.active)continue;
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=700*dt;p.life-=dt;if(p.life<=0)p.active=false;}
+  }
+
+  /* ================= 流程 ================= */
+  function resetWorld(){
+    player.x=60;player.y=360;player.vx=0;player.vy=0;player.onGround=false;
+    camX=0;chips=0;lives=3;gotEngine=false;shake=0;msg='';msgTimer=0;
+    slot.active=false;slot.pay=null;slot.timer=0;
+    coins.forEach(function(c){c.taken=false;});
+    jackpots.forEach(function(j){j.used=false;});
+    for(var i=0;i<pool.length;i++)pool[i].active=false;
+    updateHUD();
+  }
+  function startGame(){
+    unlockAudio(); mode='playing'; resetWorld();
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    beep(520,.08,'triangle',.05);
+  }
+  function gameOver(){
+    mode='over';
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win(){
+    mode='win'; gotEngine=true;
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    burst(engine.x-camX,engine.y,80,'#ffb347');
+    beep(880,.16,'sine',.06);setTimeout(function(){beep(1174,.22,'sine',.05);},110);
+    updateHUD();
+  }
+  function showMsg(t){msg=t;msgTimer=1.6;}
+  function updateHUD(){
+    $('hChips').textContent=chips;
+    $('hLives').textContent=lives;
+    $('hProgress').textContent=Math.round(clamp(player.x/engine.x,0,1)*100)+'%';
+    $('hEngine').textContent=gotEngine?'已取得':'未取得';
+  }
+  function hurt(){
+    lives--; shake=.8; beep(150,.25,'sawtooth',.05);
+    if(lives<=0){gameOver();return;}
+    player.x=Math.max(40,player.x-90);player.y=300;player.vy=0;
+    updateHUD();
+  }
+
+  /* ================= 抽獎 ================= */
+  function doSpin(){
+    if(mode!=='playing'||!slot.active||slot.t>0)return;
+    slot.t=.85;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    beep(320,.05,'square',.035);
+  }
+  function settleSpin(){
+    var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+    var pay=(a===b&&b===c)?40:((a===b||b===c||a===c)?15:5);
+    chips+=pay;slot.pay=pay;
+    burst(player.x-camX,player.y-20,pay>=40?50:16,'#ff6b35');
+    shake=Math.min(1,shake+(pay>=40?.6:.2));
+    beep(pay>=40?1046:660,.14,'sine',.06);
+    updateHUD();
+  }
+
+  /* ================= 物理 ================= */
+  function update(dt){
+    updateParticles(dt);
+    shake=Math.max(0,shake-dt*2.5);
+    blink+=dt;
+    if(msgTimer>0)msgTimer-=dt;
+
+    if(slot.active){
+      if(slot.t>0){
+        slot.t-=dt;
+        if(slot.t>0){for(var i=0;i<3;i++)if(Math.random()<.35)slot.reels[i]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          settleSpin();slot.timer=.01;
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.7){slot.active=false;slot.timer=0;}}
+    }
+
+    if(mode!=='playing')return;
+
+    // 水平移動
+    var speed=250;
+    if(slot.active)player.vx=0;
+    else if(keys.left){player.vx=-speed;player.face=-1;}
+    else if(keys.right){player.vx=speed;player.face=1;}
+    else player.vx=0;
+
+    // 跳躍
+    if(keys.jump&&player.onGround&&!slot.active){
+      player.vy=-560;player.onGround=false;beep(440,.07,'square',.04);
+    }
+    keys.jump=false;
+
+    // 重力與位移
+    player.vy+=1500*dt;
+    player.vy=Math.min(player.vy,900);
+    var prevBottom=player.y+player.h/2;
+    player.x+=player.vx*dt;
+    player.y+=player.vy*dt;
+    player.x=clamp(player.x,12,LEVEL_W-12);
+
+    // 平台碰撞（單向：只從上方落地）
+    player.onGround=false;
+    if(player.vy>=0){
+      for(var p=0;p<platforms.length;p++){
+        var pf=platforms[p];
+        var top=pf.y;
+        var bottom=player.y+player.h/2;
+        if(prevBottom<=top+2 && bottom>=top &&
+           player.x+player.w/2>pf.x && player.x-player.w/2<pf.x+pf.w){
+          player.y=top-player.h/2;player.vy=0;player.onGround=true;break;
+        }
+      }
+    }
+
+    // 掉落
+    if(player.y>H+60){hurt();if(mode!=='playing')return;
+      player.x=Math.max(40,player.x-120);player.y=300;player.vy=0;}
+
+    // 鏡頭跟隨
+    camX=clamp(player.x-W*.4,0,LEVEL_W-W);
+
+    // 硬幣
+    coins.forEach(function(c){
+      if(c.taken)return;
+      var dx=player.x-c.x,dy=player.y-c.y;
+      if(dx*dx+dy*dy<26*26){
+        c.taken=true;chips++;
+        burst(c.x-camX,c.y,8,'#ffd23f');
+        beep(760,.06,'sine',.04);updateHUD();
+      }
+    });
+
+    // JACKPOT 機台（踩上頂部觸發）
+    jackpots.forEach(function(j){
+      if(j.used||slot.active)return;
+      var dx=player.x-j.x;
+      // 走過機台或跳到機台上方即觸發（地面 y≈405 也在範圍內）
+      if(Math.abs(dx)<36 && player.y<j.y+40){
+        j.used=true;slot.active=true;slot.t=.85;slot.pay=null;slot.timer=0;showMsg('JACKPOT！');
+      }
+    });
+
+    // 蒸氣陷阱
+    steams.forEach(function(s){
+      var phase=(blink+ s.x)%s.period;
+      s.active=phase<s.on;
+      if(s.active&&Math.abs(player.x-s.x)<22&&player.y>s.y0-110){
+        if(!s.hit){s.hit=true;hurt();if(mode!=='playing')return;}
+      }
+      if(!s.active)s.hit=false;
+    });
+
+    // 引擎
+    var edx=player.x-engine.x,edy=player.y-engine.y;
+    if(edx*edx+edy*edy<65*65){win();}
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  fit();window.addEventListener('resize',fit);
+
+  function drawBackground(){
+    var g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#2a1a0e');g.addColorStop(.6,'#1a1008');g.addColorStop(1,'#0d0906');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // 背景大齒輪視差
+    ctx.save();ctx.globalAlpha=.07;
+    for(var i=0;i<8;i++){
+      var gx=((i*460-camX*.25)%(W+460))-200, gy=90+(i%3)*110, r=60+(i%4)*22;
+      ctx.strokeStyle='#ffb347';ctx.lineWidth=8;
+      ctx.beginPath();ctx.arc(gx,gy,r,0,Math.PI*2);ctx.stroke();
+      for(var t=0;t<12;t++){
+        var a=t*Math.PI/6+blink*.1;
+        ctx.beginPath();ctx.moveTo(gx+Math.cos(a)*r,gy+Math.sin(a)*r);
+        ctx.lineTo(gx+Math.cos(a)*(r+16),gy+Math.sin(a)*(r+16));ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // 管線
+    ctx.strokeStyle='rgba(196,140,70,.18)';ctx.lineWidth=10;
+    ctx.beginPath();ctx.moveTo(0,90);ctx.lineTo(W,90);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,120);ctx.lineTo(W,120);ctx.stroke();
+  }
+
+  function drawPlatforms(){
+    platforms.forEach(function(p){
+      var x=p.x-camX;
+      if(x>W+60||x+p.w<-60)return;
+      ctx.fillStyle='#3a2412';ctx.fillRect(x,p.y,p.w,p.h||18);
+      ctx.strokeStyle='#c48c46';ctx.lineWidth=2;ctx.strokeRect(x,p.y,p.w,p.h||18);
+      ctx.fillStyle='rgba(255,179,71,.25)';
+      for(var k=0;k<p.w;k+=28)ctx.fillRect(x+k+4,p.y+4,4,4);
+    });
+  }
+
+  function drawCoins(){
+    coins.forEach(function(c){
+      if(c.taken)return;
+      var x=c.x-camX;
+      if(x<-30||x>W+30)return;
+      var squash=Math.abs(Math.cos(blink*3+c.spin));
+      ctx.save();ctx.shadowColor='#ffd23f';ctx.shadowBlur=10;
+      ctx.fillStyle='#ffd23f';
+      ctx.beginPath();ctx.ellipse(x,c.y,10*Math.max(.2,squash),10,0,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawJackpots(){
+    jackpots.forEach(function(j){
+      var x=j.x-camX;
+      if(x<-60||x>W+60)return;
+      ctx.save();ctx.globalAlpha=j.used?.3:1;
+      ctx.fillStyle=j.used?'#2a1a10':'#4a2410';
+      ctx.fillRect(x-22,j.y-32,44,44);
+      ctx.strokeStyle=j.used?'#5a4020':'#ff6b35';ctx.lineWidth=2;
+      ctx.strokeRect(x-22,j.y-32,44,44);
+      ctx.fillStyle=j.used?'#5a4020':'#ff6b35';
+      ctx.font='900 22px system-ui';ctx.textAlign='center';ctx.fillText('7',x,j.y-4);
+      ctx.restore();
+    });
+  }
+
+  function drawSteams(){
+    steams.forEach(function(s){
+      var x=s.x-camX;
+      if(x<-40||x>W+40)return;
+      if(!s.active){ctx.fillStyle='rgba(120,90,60,.3)';ctx.fillRect(x-6,350,12,70);return;}
+      ctx.save();ctx.globalAlpha=.5+Math.sin(blink*16)*.12;
+      var g=ctx.createLinearGradient(0,260,0,420);
+      g.addColorStop(0,'rgba(255,220,180,0)');g.addColorStop(1,'rgba(255,180,120,.75)');
+      ctx.fillStyle=g;ctx.fillRect(x-14,260,28,160);
+      ctx.restore();
+    });
+  }
+
+  function drawEngine(){
+    var x=engine.x-camX;
+    if(x<-80||x>W+80)return;
+    ctx.save();ctx.shadowColor='#ffb347';ctx.shadowBlur=20;
+    ctx.fillStyle='#8a5a20';ctx.beginPath();ctx.arc(x,engine.y,30,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#ffd23f';ctx.lineWidth=3;ctx.stroke();
+    for(var t=0;t<10;t++){
+      var a=t*Math.PI/5+blink*1.5;
+      ctx.beginPath();ctx.moveTo(x+Math.cos(a)*30,engine.y+Math.sin(a)*30);
+      ctx.lineTo(x+Math.cos(a)*40,engine.y+Math.sin(a)*40);ctx.stroke();
+    }
+    ctx.fillStyle='#ffe9a8';ctx.font='bold 11px system-ui';ctx.textAlign='center';
+    ctx.fillText('ENGINE',x,engine.y+56);
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    var x=player.x-camX,y=player.y;
+    ctx.save();
+    if(blink%1<.1&&lives<=1)ctx.globalAlpha=.5;
+    ctx.shadowColor='#ffb347';ctx.shadowBlur=12;
+    ctx.fillStyle='#c48c46';
+    ctx.beginPath();ctx.arc(x,y-6,13,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#ffd9a0';ctx.lineWidth=2;ctx.stroke();
+    ctx.shadowBlur=0;
+    // 眼睛
+    ctx.fillStyle='#1a1008';
+    ctx.beginPath();ctx.arc(x+player.face*4-3,y-8,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+player.face*4+4,y-8,2.5,0,Math.PI*2);ctx.fill();
+    // 齒輪身体
+    ctx.fillStyle='#8a5a20';ctx.fillRect(x-9,y+4,18,12);
+    ctx.strokeStyle='#ffb347';ctx.lineWidth=1;ctx.strokeRect(x-9,y+4,18,12);
+    ctx.restore();
+  }
+
+  function drawSlot(){
+    if(!slot.active)return;
+    ctx.save();
+    var pw=250,ph=120,px=W/2-pw/2,py=20;
+    ctx.fillStyle='rgba(26,16,8,.95)';ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle='#ff6b35';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+    ctx.fillStyle='#ff6b35';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+    ctx.fillText('JACKPOT',W/2,py+16);
+    for(var i=0;i<3;i++){
+      var rw=56,rx=px+20+i*(rw+15),ry=py+28;
+      ctx.fillStyle='#1a1008';ctx.fillRect(rx,ry,rw,54);
+      ctx.strokeStyle='#ffb347';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+      ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+      ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+    }
+    if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';
+      ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+106);}
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    drawBackground();drawSteams();drawPlatforms();drawCoins();drawJackpots();drawEngine();drawPlayer();
+    for(var i=0;i<pool.length;i++){var p=pool[i];if(!p.active)continue;
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();}
+    drawSlot();
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 15px system-ui';ctx.textAlign='center';
+      ctx.fillText(msg,W/2,H-14);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  var KEYMAP={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',
+              Space:'jump',KeyW:'jump',ArrowUp:'jump'};
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(KEYMAP[e.code]){e.preventDefault();keys[KEYMAP[e.code]]=true;}
+  });
+  window.addEventListener('keyup',function(e){
+    if(KEYMAP[e.code]){e.preventDefault();keys[KEYMAP[e.code]]=false;}
+  });
+  document.querySelectorAll('.pad button[data-key]').forEach(function(btn){
+    var k=btn.getAttribute('data-key');
+    btn.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();keys[k]=true;});
+    btn.addEventListener('pointerup',function(){keys[k]=false;});
+    btn.addEventListener('pointerleave',function(){keys[k]=false;});
+  });
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
