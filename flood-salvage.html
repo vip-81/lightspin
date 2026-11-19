@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a1018">
+<meta name="description" content="洪流打撈：改編自 Ludum Dare 60《Hic Sunt Elephanti》的 Casino 救援遊戲。洪水上升，操作打撈艇撿起大象、地精、哥布林送到高地，Shift 衝刺、取捨救援，結算倖存者換籌碼。">
+<title>洪流打撈 · FLOOD SALVAGE｜LightSpin</title>
+<style>
+/* ============================================================
+   洪災插畫主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(60,140,200,.14), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(200,140,60,.10), transparent 42%),
+    #05080e;
+  color:#e0e8f0;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#9fd0f0;text-shadow:0 0 10px rgba(60,140,200,.7),0 0 26px rgba(200,140,60,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(120,180,220,.35);
+  border-radius:8px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(60,140,200,.18),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(12,20,34,.88),rgba(4,6,12,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fd0f0;
+  text-shadow:0 0 14px rgba(60,140,200,.8),0 0 30px rgba(200,140,60,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2d2e0;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;
+  font-weight:800;letter-spacing:.03em;border:2px solid rgba(120,180,220,.5);color:#9fd0f0;
+  background:rgba(60,140,200,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#4a9fe0,#9fd0f0);color:#081a24;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(60,140,200,.12),rgba(20,26,40,.1));
+  border:1px solid rgba(120,180,220,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0e8f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a8b8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>洪流打撈</h1>
+  <p class="sub">FLOOD SALVAGE · HIC SUNT ELEPHANTI</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="450" aria-label="洪流打撈遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>HIC SUNT ELEPHANTI</h2>
+      <p>月亮搞亂了潮汐，神祕家園正在<b style="color:#ff8a8a">淹沒</b>。<br>
+         操作打撈艇：<b>E</b> 撿起生物、<b>Space</b> 放到高台，<b>Shift</b> 衝刺。<br>
+         <b style="color:#ffd23f">你無法拯救全部</b>——取捨之后，倖存者換籌碼。</p>
+      <button class="neon primary" id="startBtn">開始打撈</button>
+      <p style="font-size:11px;opacity:.75">WASD/方向鍵移動 · E 撿起 · Space 放下 · Shift 衝刺</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>THE WORLD IS CRUEL</h2>
+      <p>洪水吞沒了一切</p>
+      <p>倖存 <b id="finalSaved">0</b> 隻 · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新打撈</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>ALL RESCUED</h2>
+      <p>所有生物都上了方舟！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <p id="survivorList"></p>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>已救</span><strong id="hSaved">0/6</strong></div>
+    <div><span>攜帶</span><strong id="hCarry">—</strong></div>
+    <div><span>水位</span><strong id="hWater">0%</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <div class="controls">
+    <button class="neon" id="upBtn">▲</button>
+    <button class="neon" id="leftBtn">◀</button>
+    <button class="neon" id="downBtn">▼</button>
+    <button class="neon" id="rightBtn">▶</button>
+    <button class="neon" id="pickBtn">E 撿起</button>
+    <button class="neon" id="dropBtn">Space 放下</button>
+    <button class="neon gold" id="sprintBtn">Shift 衝刺</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Hic Sunt Elephanti》（kukaracila215 &amp; Regmont）的「洪水上升 + 撿起放下 + 救援取捨 + 倖存者結算」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 450;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  // 生物種類（對應原作大象/地精/哥布林）
+  var CREATURES = [
+    { name:'大象', icon:'🐘', color:'#9fb8c8', pay:120 },
+    { name:'地精', icon:'👺', color:'#8fd68f', pay:80  },
+    { name:'哥布林', icon:'👹', color:'#d68f8f', pay:60  },
+    { name:'大象', icon:'🐘', color:'#9fb8c8', pay:120 },
+    { name:'地精', icon:'👺', color:'#8fd68f', pay:80  },
+    { name:'哥布林', icon:'👹', color:'#d68f8f', pay:60  }
+  ];
+  var SAFE_Y = 70;          // 高台（安全地）y
+  var SAFE_X1 = 60, SAFE_X2 = 640;  // 高台範圍
+  var TOTAL = CREATURES.length;
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';   // start | playing | over | win
+  var px = 400, py = 380;
+  var creatures = [];   // {x,y,type,saved,dead,carrying}
+  var carrying = -1;
+  var chips = 0, saved = 0, jackpots = 0;
+  var water = 0, sprint = 0;      // 水位 0..1，衝刺能量 0..1
+  var shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var particles = [];
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+  var keys = {left:false,right:false,up:false,down:false,sprint:false};
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function coin(){ beep(880,.05,'sine',.04); }
+  function splash(){ beep(180,.25,'sawtooth',.05); }
+
+  /* ================= 粒子 ================= */
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    px=400;py=380;carrying=-1;chips=0;saved=0;jackpots=0;
+    water=0;sprint=1;shake=0;msg='';msgTimer=0;particles=[];
+    slot.active=false;slot.pay=null;slot.timer=0;
+    creatures=[];
+    for(var i=0;i<TOTAL;i++){
+      creatures.push({
+        x: 90 + (i%3)*250 + rand(60),
+        y: 200 + Math.floor(i/3)*110 + rand(30),
+        type: i, saved:false, dead:false, bob:rand(6)
+      });
+    }
+    addMsg('洪水上升！快救生物！');
+    updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); resetGame(); mode='playing';
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.remove('hidden');  // temp, will hide below
+    $('winScreen').classList.add('hidden');
+    coin();
+  }
+  function gameOver() {
+    mode='over';
+    $('finalSaved').textContent=saved;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;splash();
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    var names={};creatures.forEach(function(c){if(c.saved)names[CREATURES[c.type].name]=true;});
+    $('survivorList').textContent='倖存者：'+Object.keys(names).join('、')+' 🐘👺👹';
+    $('winScreen').classList.remove('hidden');
+    coin();setTimeout(function(){beep(1046,.18,'sine',.06);},150);
+  }
+  function addMsg(t){msg=t;msgTimer=1.6;}
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hSaved').textContent=saved+'/'+TOTAL;
+    $('hCarry').textContent=carrying>=0?CREATURES[carrying].name:'—';
+    $('hWater').textContent=Math.round(water*100)+'%';
+    $('hJackpot').textContent=jackpots;
+  }
+
+  /* ================= 互動 ================= */
+  function pickUp() {
+    if(mode!=='playing'||carrying>=0)return;
+    for(var i=0;i<creatures.length;i++){
+      var c=creatures[i];
+      if(!c.saved&&!c.dead&&Math.abs(px-c.x)<34&&Math.abs(py-c.y)<34){
+        carrying=i;c.carrying=true;
+        beep(560,.06,'square',.04);addMsg('撿起 '+CREATURES[c.type].name);
+        updateHUD();return;
+      }
+    }
+    addMsg('附近沒有生物');
+  }
+  function drop() {
+    if(mode!=='playing'||carrying<0)return;
+    var c=creatures[carrying];
+    c.carrying=false;
+    // 必須在高台上才算獲救
+    if(py<=SAFE_Y+50 && px>=SAFE_X1 && px<=SAFE_X2+120){
+      c.saved=true;saved++;
+      var pay=CREATURES[c.type].pay;
+      chips+=pay;
+      burst(c.x,c.y,18,CREATURES[c.type].color);
+      beep(760,.1,'sine',.05);coin();
+      addMsg('獲救！+'+pay+' 籌碼');
+      if(saved%2===0)triggerJackpot();
+      if(saved>=TOTAL){win();}
+    } else {
+      c.x=px;c.y=py;
+      addMsg('要放到上方高台才算獲救！');
+      beep(200,.1,'sawtooth',.04);
+    }
+    carrying=-1;updateHUD();
+  }
+  function triggerJackpot(){
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    addMsg('JACKPOT 救援獎勵！');
+    updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    blink+=dt; shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=120?50:18,'#ffd23f');
+          beep(pay>=120?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if (mode!=='playing') return;
+
+    var speed=(keys.sprint&&sprint>0?270:150);
+    if(keys.sprint&&sprint>0)sprint=Math.max(0,sprint-dt*0.5);
+    else sprint=Math.min(1,sprint+dt*0.2);
+    if(keys.left)px-=speed*dt;
+    if(keys.right)px+=speed*dt;
+    if(keys.up)py-=speed*dt;
+    if(keys.down)py+=speed*dt;
+    px=clamp(px,16,W-16);py=clamp(py,40,H-16);
+
+    // 撿起的生物跟著玩家
+    if(carrying>=0){creatures[carrying].x=px;creatures[carrying].y=py-18;}
+
+    // 水位上升
+    water=Math.min(1,water+dt*0.012);
+    var waterY=H-water*(H-SAFE_Y-40);
+
+    // 生物被淹沒判定（未獲救且低於水位線）
+    creatures.forEach(function(c,idx){
+      if(c.saved||c.dead)return;
+      if(c.y>waterY){
+        c.dead=true;
+        if(carrying===idx)carrying=-1;
+        burst(c.x,c.y,12,'#5a8fb8');
+        splash();
+        addMsg('一隻'+CREATURES[c.type].name+'被洪水沖走了…');
+        updateHUD();
+      }
+    });
+
+    // 全部非獲救生物都死亡 → game over（无法全救也算失败）
+    var alive=creatures.filter(function(c){return !c.saved&&!c.dead;}).length;
+    if(alive===0 && saved<TOTAL){gameOver();return;}
+    if(water>=1 && saved<TOTAL){gameOver();return;}
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function drawCreature(c,idx){
+    if(c.dead)return;
+    var t=CREATURES[c.type];
+    ctx.save();
+    ctx.fillStyle=t.color;ctx.shadowColor=t.color;ctx.shadowBlur=8;
+    ctx.font='30px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(t.icon,c.x,c.y+Math.sin(blink*3+c.bob)*3);
+    ctx.shadowBlur=0;
+    if(c.carrying){ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.beginPath();ctx.arc(c.x,c.y,22,0,Math.PI*2);ctx.stroke();}
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    // 天空
+    var g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#101e34');g.addColorStop(1,'#1a2c44');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    // 高台（安全地）
+    ctx.fillStyle='#3a3020';ctx.fillRect(SAFE_X1,SAFE_Y,SAFE_X2-SAFE_X1+120,34);
+    ctx.strokeStyle='#c48c46';ctx.lineWidth=2;
+    ctx.strokeRect(SAFE_X1,SAFE_Y,SAFE_X2-SAFE_X1+120,34);
+    ctx.fillStyle='#8fd68f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+    ctx.fillText('▲ SAFE GROUND — 把生物放在這裡 ▲',W/2,SAFE_Y+22);
+
+    // 生物
+    creatures.forEach(drawCreature);
+
+    // 洪水
+    var waterY=H-water*(H-SAFE_Y-40);
+    ctx.save();
+    ctx.fillStyle='rgba(50,120,180,.65)';
+    ctx.beginPath();
+    ctx.moveTo(0,waterY);
+    for(var x=0;x<=W;x+=20)ctx.lineTo(x,waterY+Math.sin(x*0.05+blink*2)*6);
+    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(160,220,255,.5)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,waterY);
+    for(var x2=0;x2<=W;x2+=20)ctx.lineTo(x2,waterY+Math.sin(x2*0.05+blink*2)*6);
+    ctx.stroke();
+    ctx.restore();
+
+    // 打撈艇
+    ctx.save();
+    ctx.fillStyle='#5a3a20';
+    ctx.beginPath();ctx.moveTo(px-20,py);ctx.lineTo(px+20,py);ctx.lineTo(px+14,py+14);ctx.lineTo(px-14,py+14);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#e0e8f0';ctx.beginPath();ctx.arc(px,py-10,9,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a2418';ctx.beginPath();ctx.arc(px+3,py-10,3,0,Math.PI*2);ctx.fill();
+    // 衝刺條
+    ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(px-20,py+18,40,5);
+    ctx.fillStyle='#ffd23f';ctx.fillRect(px-20,py+18,40*sprint,5);
+    ctx.restore();
+
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+
+    // JACKPOT
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px2=W/2-pw/2,py2=18;
+      ctx.fillStyle='rgba(10,16,26,.96)';ctx.fillRect(px2,py2,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px2,py2,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText('JACKPOT',W/2,py2+16);
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px2+20+i*(rw+15),ry=py2+28;
+        ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#9fd0f0';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';
+        ctx.fillText(slot.reels[i],rx+rw/2,ry+36);
+      }
+      if(slot.pay!==null)ctx.fillStyle='#39ff88',ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py2+110);
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-26,W,26);
+      ctx.fillStyle='#ffe27a';ctx.font='bold 13px system-ui';ctx.textAlign='center';
+      ctx.fillText(msg,W/2,H-8);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  var KEYMAP={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down'};
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(KEYMAP[e.code]){e.preventDefault();keys[KEYMAP[e.code]]=true;}
+    if(e.code==='KeyE')pickUp();
+    if(e.code==='Space'){e.preventDefault();drop();}
+    if(e.code==='ShiftLeft'||e.code==='ShiftRight')keys.sprint=true;
+  });
+  window.addEventListener('keyup',function(e){
+    if(KEYMAP[e.code])keys[KEYMAP[e.code]]=false;
+    if(e.code==='ShiftLeft'||e.code==='ShiftRight')keys.sprint=false;
+  });
+  function bindHold(id,key){
+    var b=$(id);
+    b.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();keys[key]=true;});
+    b.addEventListener('pointerup',function(){keys[key]=false;});
+    b.addEventListener('pointerleave',function(){keys[key]=false;});
+  }
+  bindHold('upBtn','up');bindHold('downBtn','down');bindHold('leftBtn','left');bindHold('rightBtn','right');
+  bindHold('sprintBtn','sprint');
+  $('pickBtn').addEventListener('click',function(){pickUp();});
+  $('dropBtn').addEventListener('click',function(){drop();});
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
