@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0c18">
+<meta name="description" content="金庫神探：改編自 Ludum Dare 60《The DeTechTive》的 Casino 偵探遊戲。右鍵檢查線索、左鍵互動，解開保險箱密碼破案赚籌碼，SVGA 復古像素風與 FMV 叙事致敬黃金時代冒險遊戲。">
+<title>金庫神探 · FORTUNE DETECTIVE｜LightSpin</title>
+<style>
+/* ============================================================
+   DOS/SVGA 復古像素冒險主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(80,120,220,.14), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(220,80,140,.10), transparent 42%),
+    #05060f;
+  color:#dce4f0;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#9fd8ff;text-shadow:0 0 10px rgba(80,160,255,.7),0 0 26px rgba(220,80,140,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#d0a8e0;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:2px solid rgba(120,160,240,.4);
+  border-radius:6px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 28px rgba(80,120,220,.18),inset 0 0 40px rgba(0,0,0,.6)}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(16,12,36,.86),rgba(4,4,12,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fd8ff;
+  text-shadow:0 0 14px rgba(80,160,255,.8),0 0 30px rgba(220,80,140,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2c8e0;max-width:48ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:40px;padding:8px 14px;border-radius:6px;font:inherit;
+  font-weight:800;letter-spacing:.04em;border:2px solid rgba(120,160,240,.5);color:#9fd8ff;
+  background:rgba(80,120,220,.14);transition:transform .12s ease,box-shadow .2s ease;font-size:12px}
+button.neon:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(120,160,240,.4)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#5a9fff,#9fd8ff);color:#08182a;border-color:transparent}
+button.neon.act{background:rgba(220,80,140,.14);border-color:rgba(220,80,140,.5);color:#ff9fc4}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(80,120,220,.14),rgba(20,14,40,.1));
+  border:1px solid rgba(120,160,240,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#d0a8e0}
+.hud strong{display:block;font-size:15px;color:#dce4f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#9aa0c0;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>金庫神探</h1>
+  <p class="sub">FORTUNE DETECTIVE · SVGA ADVENTURE</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="480" aria-label="金庫神探遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>THE DeTECH-TIVE</h2>
+      <p> presenting in stunning SVGA…<br>
+         你是像素神探。<b style="color:#9fd8ff">右鍵檢查</b>物件找線索、<b style="color:#ff9fc4">左鍵互動</b>解開保險箱密碼。<br>
+         beros 保險公司懸賞：破解五起金庫失竊案！</p>
+      <button class="neon primary" id="startBtn">插入磁片啟動</button>
+      <p style="font-size:11px;opacity:.75">左鍵互動 · 右鍵檢查 · 數字鍵輸入密碼 · Esc 跳過對話</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>GAME OVER</h2>
+      <p>時間用盡，罪犯逃逸無蹤</p>
+      <p>破案 <b id="finalSolved">0</b> 件 · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新啟動</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>CASE CLOSED</h2>
+      <p>所有案件偵破，你成了傳奇神探！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>案件</span><strong id="hCase">1/5</strong></div>
+    <div><span>線索</span><strong id="hClues">0/3</strong></div>
+    <div><span>時間</span><strong id="hTime">90</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《The DeTechTive》（PhilStrahl）的「左鍵互動 / 右鍵檢查 + 舊科技解謎 + FMV 叙事」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 480, TOTAL_CASES = 5;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+  var rand = function (n) { return (Math.random() * n) | 0; };
+
+  // 案件資料：密码 + 線索分布在不同物件
+  var CASES = [
+    { title:'失竊的藍鑽', code:'372',
+      clues:{ desk:'紙條：「第一位是 3」', phone:'留言機：「第二位是 7，老搭檔」', books:'書籤：「最後一位是 2」',
+              safe:'厚重鋼板，三個轉盤。', map:'無關緊要的舊地圖。', lamp:'燈泡還溫著。' } },
+    { title:'失蹤的合約', code:'518',
+      clues:{ map:'紅筆圈註：「首位 5」', phone:'留言：「中間是 1」', lamp:'燈下壓著：「末位 8」',
+              safe:'熟悉的保險箱。', desk:'空抽屜。', books:'全是法律書。' } },
+    { title:'假鈔疑雲', code:'904',
+      clues:{ books:'書背寫著：「9」', safe:'旁邊便條：「中間 0」', desk:'發票背面：「4」',
+              phone:'留言已滿。', map:'財報地圖。', lamp:'光線微弱。' } },
+    { title:'神祕來信', code:'643',
+      clues:{ lamp:'燈罩內側：「6」', desk:'信件：「第二位是 4」', phone:'留言：「結尾 3」',
+              safe:'等待密碼。', books:'小說集。', map:'信件附的地圖。' } },
+    { title:'最終案件', code:'271',
+      clues:{ phone:'最後通話：「2」', books:'百科全書第 7 頁。', map:'座標dot：「1」',
+              desk:'空無一物。', lamp:'熄滅了。', safe:'最後一道防線。' } }
+  ];
+
+  // 場景熱點
+  var HOTSPOTS = [
+    { id:'safe',  x:560, y:110, w:200, h:210, label:'SAFE'  },
+    { id:'desk',  x:170, y:300, w:230, h:130, label:'DESK'  },
+    { id:'phone', x:70,  y:210, w:110, h:90,  label:'PHONE' },
+    { id:'books', x:40,  y:50,  w:130, h:150, label:'BOOKS' },
+    { id:'map',   x:400, y:50,  w:150, h:130, label:'MAP'   },
+    { id:'lamp',  x:300, y:80,  w:80,  h:90,  label:'LAMP'  }
+  ];
+
+  /* ================= 狀態 ================= */
+  var mode = 'start';    // start | playing | code | fmv | over | win
+  var caseIdx = 0;
+  var found = [];        // 已找到線索的物件 id
+  var input = '';        // 密碼輸入
+  var chips = 0, solved = 0, jackpots = 0;
+  var timeLeft = 90, shake = 0, blink = 0, msg = '', msgTimer = 0;
+  var fmvLines = [], fmvIdx = 0;
+  var slot = { active:false, reels:['7','★','◆'], t:0, pay:null, timer:0 };
+  var SYMBOLS = ['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  function beep(freq, dur, type, gain) {
+    if (!actx) return;
+    try {
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  function clickSfx(){ beep(880,.04,'square',.03); }
+  function successSfx(){ beep(523,.1,'square',.05); setTimeout(function(){beep(659,.1,'square',.05);},100); setTimeout(function(){beep(784,.16,'square',.05);},200); }
+
+  /* ================= 粒子 ================= */
+  var particles=[];
+  function burst(x,y,n,color){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;
+      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,
+        life:.4+Math.random()*.4,maxLife:.8,color:color,size:2+Math.random()*3});}
+  }
+
+  /* ================= 流程 ================= */
+  function resetGame() {
+    caseIdx=0;found=[];input='';chips=0;solved=0;jackpots=0;
+    timeLeft=90;shake=0;mode='playing';msg='';msgTimer=0;
+    slot.active=false;slot.pay=null;slot.timer=0;
+    updateHUD();
+  }
+  function startGame() {
+    unlockAudio(); resetGame();
+    $('startScreen').classList.add('hidden');
+    $('overScreen').classList.add('hidden');
+    $('winScreen').classList.add('hidden');
+    clickSfx();
+  }
+  function gameOver() {
+    mode='over';
+    $('finalSolved').textContent=solved;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(120,.35,'sawtooth',.06);
+  }
+  function win() {
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    successSfx();
+  }
+  function showMsg(t){msg=t;msgTimer=1.8;}
+  function updateHUD() {
+    $('hChips').textContent=chips;
+    $('hCase').textContent=(caseIdx+1)+'/'+TOTAL_CASES;
+    $('hClues').textContent=found.length+'/3';
+    $('hTime').textContent=Math.max(0,Math.ceil(timeLeft));
+    $('hJackpot').textContent=jackpots;
+  }
+
+  function currentCase(){ return CASES[caseIdx]; }
+  function clueCount(){ return found.length; }
+
+  /* ================= 互動 ================= */
+  function examine(id) {
+    if (mode!=='playing') return;
+    var txt=currentCase().clues[id] || '沒什麼特別。';
+    if (found.indexOf(id)<0 && txt && txt.match(/\d/)) {
+      // 含數字的線索才計入
+      found.push(id);
+      clickSfx();
+      beep(660,.08,'sine',.04);
+    } else clickSfx();
+    showMsg('檢查：'+txt);
+    updateHUD();
+  }
+  function interact(id) {
+    if (mode!=='playing') return;
+    if (id==='safe') {
+      if (clueCount()<3) { showMsg('還沒找齊 3 個線索！'); beep(160,.1,'sawtooth',.04); return; }
+      mode='code'; input=''; clickSfx(); return;
+    }
+    // 其他物件左鍵＝再檢查一次
+    examine(id);
+  }
+  function digit(d) {
+    if (mode!=='code'||input.length>=3) return;
+    input+=d; clickSfx();
+    if (input.length===3) checkCode();
+  }
+  function clearCode(){ if(mode!=='code')return; input=''; clickSfx(); }
+  function checkCode() {
+    if (input===currentCase().code) {
+      mode='fmv'; fmvLines=[
+        '【FMV】' + currentCase().title + ' — 真相大白',
+        '保險箱應聲而開，贓物就在眼前。',
+        '「又一樁完美破案，記得領懸賞。」'
+      ];
+      fmvIdx=0; solved++;
+      var pay=60+solved*20; chips+=pay;
+      timeLeft=Math.min(120,timeLeft+15);
+      burst(660,210,40,'#ffd23f');
+      successSfx();
+      if (solved%2===0) triggerJackpot();
+      showMsg('破案！+'+pay+' 籌碼 +15 秒');
+      if (solved>=TOTAL_CASES) { mode='win'; $('winScore').textContent=chips+' 籌碼'; $('winScreen').classList.remove('hidden'); }
+      updateHUD();
+    } else {
+      input=''; timeLeft=Math.max(0,timeLeft-8);
+      shake=.6; beep(150,.25,'sawtooth',.05);
+      showMsg('密碼錯誤！-8 秒');
+      if (timeLeft<=0) gameOver();
+      else mode='playing';
+      updateHUD();
+    }
+  }
+  function nextFmv() {
+    if (mode!=='fmv') return;
+    fmvIdx++;
+    clickSfx();
+    if (fmvIdx>=fmvLines.length) {
+      caseIdx++; found=[]; input=''; mode='playing';
+      updateHUD();
+    }
+  }
+  function triggerJackpot() {
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt) {
+    blink+=dt; shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+
+    if (slot.active) {
+      if (slot.t>0) {
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?100:((a===b||b===c||a===c)?40:15);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=100?50:18,'#ffd23f');
+          beep(pay>=100?1046:660,.14,'sine',.06);
+          updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+
+    if (mode!=='playing') return;
+    timeLeft-=dt;
+    if(timeLeft<=0){gameOver();return;}
+    updateHUD();
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function pxRect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
+  function pxText(t,x,y,c,size,align){
+    ctx.fillStyle=c;ctx.font='bold '+(size||14)+'px ui-monospace,monospace';
+    ctx.textAlign=align||'left';ctx.fillText(t,x,y);
+  }
+
+  function drawScene() {
+    // 牆壁
+    pxRect(0,0,W,H,'#141a30');
+    // 地板
+    pxRect(0,360,W,120,'#1e2440');
+    ctx.strokeStyle='#2a3358';ctx.lineWidth=2;
+    for(var i=0;i<10;i++){ctx.beginPath();ctx.moveTo(i*100,360);ctx.lineTo(i*100-40,480);ctx.stroke();}
+    // 窗戶
+    pxRect(400,40,150,120,'#0a1830');
+    pxRect(405,45,140,110,'#123060');
+    pxText('NIGHT',475,105,'#5a9fff',12,'center');
+
+    // 書架
+    pxRect(40,50,130,150,'#3a2418');
+    for(var r=0;r<4;r++){
+      pxRect(46,58+r*36,118,8,'#5a3a22');
+      for(var b=0;b<8;b++)pxRect(50+b*14,40+r*36,10,18,['#a03040','#3060a0','#c09030','#40a070'][b%4]);
+    }
+    // 檯燈
+    pxRect(330,140,20,60,'#806040');
+    pxRect(300,80,80,20,'#d0a040');
+    pxRect(310,100,60,30,'rgba(255,220,120,.18)');
+    // 電話
+    pxRect(80,230,90,45,'#203050');
+    pxRect(90,215,70,25,'#304070');
+    pxText('TEL',125,255,'#7fb8ff',12,'center');
+    // 书桌
+    pxRect(170,300,230,130,'#4a3020');
+    pxRect(170,300,230,12,'#6a4830');
+    pxRect(190,330,80,40,'#3a2418');
+    pxRect(300,330,80,40,'#3a2418');
+    // 地圖（牆上）
+    pxRect(400,170,150,110,'#2a3a28');
+    ctx.strokeStyle='#5a7a50';ctx.lineWidth=1;
+    for(var g=0;g<6;g++){ctx.beginPath();ctx.moveTo(400,180+g*18);ctx.lineTo(550,180+g*18);ctx.stroke();}
+    // 保險箱
+    pxRect(560,110,200,210,'#505868');
+    pxRect(570,120,180,190,'#3a4050');
+    ctx.strokeStyle='#8090a0';ctx.lineWidth=3;ctx.strokeRect(570,120,180,190);
+    // 轉盤
+    for(var d=0;d<3;d++){
+      ctx.fillStyle='#c0c8d0';ctx.beginPath();ctx.arc(600+d*65,200,24,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#2a3040';ctx.font='bold 20px ui-monospace,monospace';ctx.textAlign='center';
+      ctx.fillText(input[d]||'-',600+d*65,207);
+    }
+    pxText(currentCase().title,660,300,'#ffd23f',12,'center');
+
+    // 熱點提示（發現線索的物件閃爍）
+    HOTSPOTS.forEach(function(h){
+      if(found.indexOf(h.id)>=0){
+        ctx.strokeStyle='rgba(120,255,160,'+(0.3+Math.sin(blink*5)*0.2)+')';
+        ctx.lineWidth=2;ctx.strokeRect(h.x,h.y,h.w,h.h);
+      }
+      if(hoverId===h.id){
+        ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;
+        ctx.strokeRect(h.x,h.y,h.w,h.h);
+      }
+    });
+  }
+
+  function drawCodePanel() {
+    ctx.save();
+    var pw=420,ph=300,px=W/2-pw/2,py=H/2-ph/2;
+    ctx.fillStyle='rgba(10,14,30,.97)';ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle='#9fd8ff';ctx.lineWidth=3;ctx.strokeRect(px,py,pw,ph);
+    pxText('SAFE — 輸入 3 位密碼',W/2,py+34,'#9fd8ff',16,'center');
+    // 三位顯示
+    for(var i=0;i<3;i++){
+      ctx.fillStyle='#1a2440';ctx.fillRect(px+80+i*100,py+60,80,60);
+      ctx.strokeStyle='#5a9fff';ctx.lineWidth=2;ctx.strokeRect(px+80+i*100,py+60,80,60);
+      pxText(input[i]||'_',px+120+i*100,py+102,'#ffd23f',32,'center');
+    }
+    // 數字鍵 0-9
+    for(var d=0;d<10;d++){
+      var bx=px+50+(d%5)*70, by=py+150+Math.floor(d/5)*55;
+      ctx.fillStyle='#2a3a60';ctx.fillRect(bx,by,56,42);
+      ctx.strokeStyle='#5a9fff';ctx.lineWidth=1;ctx.strokeRect(bx,by,56,42);
+      pxText(String(d),bx+28,by+29,'#cfe4ff',20,'center');
+    }
+    // 清除
+    ctx.fillStyle='#5a2a40';ctx.fillRect(px+340,py+150,56,42);
+    ctx.strokeStyle='#ff9fc4';ctx.lineWidth=1;ctx.strokeRect(px+340,py+150,56,42);
+    pxText('C',px+368,py+179,'#ff9fc4',18,'center');
+    ctx.restore();
+  }
+
+  function drawFmv(){
+    ctx.save();
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    //  simulating FMV 掃描
+    ctx.fillStyle='#0a1030';ctx.fillRect(0,80,W,240);
+    ctx.strokeStyle='#3050a0';ctx.lineWidth=2;ctx.strokeRect(20,90,W-40,220);
+    if(fmvLines[fmvIdx])pxText(fmvLines[fmvIdx],W/2,210,'#9fd8ff',20,'center');
+    pxText('▶ FMV — 按任意鍵繼續 / ESC 跳過',W/2,400,'#8090b0',12,'center');
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    if(mode==='fmv') drawFmv();
+    else {
+      drawScene();
+      if(mode==='code')drawCodePanel();
+    }
+    // CRT 掃描線
+    ctx.fillStyle='rgba(0,0,0,.12)';
+    for(var y=0;y<H;y+=4)ctx.fillRect(0,y,W,1);
+    // 粒子
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+      ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+    // JACKPOT
+    if(slot.active){
+      ctx.save();
+      var pw=260,ph=125,px=W/2-pw/2,py=18;
+      ctx.fillStyle='rgba(10,14,30,.96)';ctx.fillRect(px,py,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+      pxText('JACKPOT',W/2,py+16,'#ffd23f',12,'center');
+      for(var i=0;i<3;i++){
+        var rw=56,rx=px+20+i*(rw+15),ry=py+28;
+        ctx.fillStyle='#0c1020';ctx.fillRect(rx,ry,rw,54);
+        ctx.strokeStyle='#9fd8ff';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);
+        pxText(slot.reels[i],rx+rw/2,ry+36,'#ffd23f',30,'center');
+      }
+      if(slot.pay!==null)pxText('+ '+slot.pay+' 籌碼',W/2,py+110,'#39ff88',14,'center');
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);
+      ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-46,W,46);
+      pxText(msg,W/2,H-18,'#ffe27a',14,'center');ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){
+    var dt=(now-last)/1000;last=now;
+    if(!isFinite(dt)||dt<0)dt=0;
+    if(dt>.05)dt=.05;
+    acc+=dt;var step=1/120,guard=0;
+    while(acc>=step&&guard++<12){update(step);acc-=step;}
+    render();requestAnimationFrame(frame);
+  }
+
+  /* ================= 輸入 ================= */
+  var hoverId=null;
+  function getPos(e){
+    var rect=canvas.getBoundingClientRect();
+    return {x:(e.clientX-rect.left)/rect.width*W, y:(e.clientY-rect.top)/rect.height*H};
+  }
+  function hitHotspot(p){
+    for(var i=0;i<HOTSPOTS.length;i++){var h=HOTSPOTS[i];
+      if(p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h)return h.id;}
+    return null;
+  }
+  function codeClick(p){
+    var px=W/2-210, py=H/2-150;
+    for(var d=0;d<10;d++){
+      var bx=px+50+(d%5)*70, by=py+150+Math.floor(d/5)*55;
+      if(p.x>=bx&&p.x<=bx+56&&p.y>=by&&p.y<=by+42){digit(String(d));return;}
+    }
+    var cx=px+340, cy=py+150;
+    if(p.x>=cx&&p.x<=cx+56&&p.y>=cy&&p.y<=cy+42)clearCode();
+  }
+  canvas.addEventListener('pointermove',function(e){ hoverId=hitHotspot(getPos(e)); });
+  canvas.addEventListener('pointerdown',function(e){
+    e.preventDefault();unlockAudio();
+    var p=getPos(e);
+    if(mode==='fmv'){nextFmv();return;}
+    if(mode==='code'){codeClick(p);return;}
+    if(mode!=='playing')return;
+    var id=hitHotspot(p);
+    if(!id)return;
+    if(e.button===2)examine(id); else interact(id);
+  });
+  canvas.addEventListener('contextmenu',function(e){e.preventDefault();});
+  window.addEventListener('keydown',function(e){
+    unlockAudio();
+    if(mode==='fmv'){ if(e.code==='Escape')nextFmv(); else nextFmv(); return; }
+    if(mode==='code'){
+      if(e.code==='Backspace'){input=input.slice(0,-1);clickSfx();return;}
+      if(e.code==='Escape'){mode='playing';input='';return;}
+      if(e.code.indexOf('Digit')===0){var d=e.code.replace('Digit','');if(+d>=0&&+d<=9)digit(d);}
+      if(e.code==='Enter'&&input.length===3)checkCode();
+      return;
+    }
+  });
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
