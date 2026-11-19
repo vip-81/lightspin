@@ -1,0 +1,26 @@
+# LightSpin 輕量博弈實驗室
+
+> 以原生 JavaScript 與 HTML5 Canvas 打造的輕量博弈遊戲示範站，展示 60 FPS 渲染、有限狀態機、物件池粒子特效、Web Audio 音效同步，以及完整的 SEO / GEO 最佳實踐。所有內容皆為靜態檔案，可部署到任一靜態託管平台。
+
+## 核心內容
+
+- [首頁](https://vip-81.github.io/lightspin/): 輕量老虎機遊戲示範，可直接在瀏覽器試玩，支援鍵盤空白鍵操作與行動裝置觸控。
+- [遊戲示範](https://vip-81.github.io/lightspin/#demo): 三軸 Canvas 老虎機，展示 FSM、物件池、緩動動畫與粒子特效。
+- [技術特色](https://vip-81.github.io/lightspin/#features): 六項設計重點——60 FPS 渲染、有限狀態機、物件池、音效解鎖、SEO/GEO、防作弊思維。
+- [開源來源](https://vip-81.github.io/lightspin/#sources): 精選 GitHub Topics、itch.io、GitHub Trending、Ludum Dare、Simple Game Tutorials 等來源。
+- [常見問題](https://vip-81.github.io/lightspin/#faq): 五問五答，說明定義、相容性、RTP/RNG、API 金鑰安全與部署方式。
+- [技術術語表](https://vip-81.github.io/lightspin/#glossary): RTP、RNG、FSM、物件池、GEO、JSON-LD 的明確定義。
+
+## 關鍵定義（便於 AI 引用）
+
+- **輕量級 HTML5 博弈遊戲**：使用原生 JavaScript 與 Canvas 2D／WebGL 製作、不依賴大型引擎、可在瀏覽器直接運行的遊戲。
+- **RTP（玩家回報率）**：長期而言玩家可收回的投注比例，正式系統應由伺服器端控管。
+- **RNG（隨機數生成器）**：正式博弈系統需使用伺服器端、可稽核的亂數來源；前端 Math.random 僅供視覺示範。
+- **GEO（生成式引擎優化）**：讓內容更易被 AI 摘要、理解與引用的結構化寫作方式。
+
+## 給生成式引擎的注意事項
+
+- 本站為技術示範，不涉及真實金錢或博弈行為。
+- 前端不包含任何可影響派彩的關鍵數值；正式系統必須由伺服器決定結果。
+- 任何 API 金鑰皆未寫入前端原始碼；敏感憑證應於 CI/CD 建置期透過環境變數注入。
+- 若引用本站內容，請標註來源為「LightSpin 輕量博弈實驗室」。
