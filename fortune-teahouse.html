@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#141a12">
+<meta name="description" content="命運茶館：改編自 Ludum Dare 60《Teteria》的 Casino 敘事遊戲。收集松果煮茶、調配魔法配方、為客人預言未來，不同選擇通往不同結局與籌碼獎勵。">
+<title>命運茶館 · FORTUNE TEAHOUSE｜LightSpin</title>
+<style>
+/* ============================================================
+   森林童話茶館主題：單檔、零外部資源、系統字體
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 18% 12%, rgba(120,180,100,.14), transparent 44%),
+    radial-gradient(circle at 82% 24%, rgba(220,160,80,.10), transparent 42%),
+    #080c08;
+  color:#e4ecdc;
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  display:flex;justify-content:center;padding:12px 10px 24px;
+  -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;
+   color:#c8e0a8;text-shadow:0 0 10px rgba(120,180,100,.7),0 0 26px rgba(220,160,80,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(140,190,110,.35);
+  border-radius:8px;overflow:hidden;touch-action:none;
+  box-shadow:0 0 30px rgba(120,180,100,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;text-align:center;padding:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(14,24,14,.88),rgba(4,8,4,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#c8e0a8;
+  text-shadow:0 0 14px rgba(120,180,100,.8),0 0 30px rgba(220,160,80,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2d2b8;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;
+  font-weight:800;letter-spacing:.03em;border:2px solid rgba(140,190,110,.5);color:#c8e0a8;
+  background:rgba(120,180,100,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#7ac85a,#c8e0a8);color:#101c0c;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(120,180,100,.12),rgba(20,30,20,.1));
+  border:1px solid rgba(140,190,110,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e4ecdc;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a890;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>命運茶館</h1>
+  <p class="sub">FORTUNE TEAHOUSE · BREW THE FUTURE</p>
+
+  <div class="stage">
+    <canvas id="game" width="800" height="450" aria-label="命運茶館遊戲畫面"></canvas>
+
+    <div class="overlay" id="startScreen">
+      <h2>TETERÍA</h2>
+      <p>森林深處的神秘茶館。<br>
+         <b style="color:#ffd23f">收集松果</b>煮開水，<b style="color:#7de0c8">調配魔法茶</b>，<br>
+         為客人預言未來——<b>你的選擇，會改變結局。</b></p>
+      <button class="neon primary" id="startBtn">走進茶館</button>
+      <p style="font-size:11px;opacity:.75">點選按鈕操作 · 每位客人兩種結局</p>
+    </div>
+
+    <div class="overlay hidden" id="overScreen">
+      <h2>TEA HOUSE CLOSED</h2>
+      <p>松果用盡，茶館打烊了</p>
+      <p>服務客人 <b id="finalGuests">0</b> · 籌碼 <b id="finalChips">0</b></p>
+      <button class="neon primary" id="againBtn">重新開館</button>
+    </div>
+
+    <div class="overlay hidden" id="winScreen">
+      <h2>MYSTIC TEA MASTER</h2>
+      <p>所有客人的命運都已揭曉！</p>
+      <div class="big" id="winScore">0 籌碼</div>
+      <button class="neon primary" id="winAgainBtn">再玩一次</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+    <div><span>客人</span><strong id="hGuests">0/5</strong></div>
+    <div><span>松果</span><strong id="hCones">3</strong></div>
+    <div><span>水溫</span><strong id="hWater">0%</strong></div>
+    <div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+  </div>
+
+  <div class="controls">
+    <button class="neon" id="gatherBtn">收集松果</button>
+    <button class="neon" id="boilBtn">煮水</button>
+    <button class="neon gold" id="brewBtn">調茶預言</button>
+  </div>
+
+  <p class="tips">改編自 Ludum Dare 60 作品《Teteria》（kanity）的「煮茶調配 + 選擇影響結局」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常數 ================= */
+  var W = 800, H = 450, TOTAL_GUESTS = 5;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v,a,b){return v<a?a:v>b?b:v;};
+  var rand = function(n){return (Math.random()*n)|0;};
+
+  // 草藥配方：每種有不同「命運傾向」
+  var HERBS = [
+    { name:'月光薄荷', icon:'🌿', color:'#8fd6b0', pay:60 },
+    { name:'回憶薑根', icon:'🫚', color:'#d0a060', pay:80 },
+    { name:'星辰花瓣', icon:'🌸', color:'#c8a8f0', pay:100 }
+  ];
+  // 客人：問題 + 兩種結局（依水溫/草藥決定）
+  var GUESTS = [
+    { name:'珠寶匠', q:'我失落的手藝還能找回嗎？',
+      good:'你回想起失傳的鑲嵌技法，重拾榮耀。', bad:'手藝終將隨時間流逝，珍惜當下。' },
+    { name:'旅人', q:'我該回家，還是繼續遠行？',
+      good:'远方有新契機，勇敢出發吧。', bad:'家門口的花已開，該回去了。' },
+    { name:'學者', q:'這壺茶真能預知未來嗎？',
+      good:'茶葉說：未來由你書寫。', bad:'茶葉沉默——它只映照內心。' },
+    { name:'園丁', q:'今年冬天會很冷嗎？',
+      good:' store 足夠的種子，春天會茂盛。', bad:'嚴冬將至，多添柴火。' },
+    { name:'茶館主人', q:'這家茶館的命運如何？',
+      good:'你的茶，將溫暖更多旅人。', bad:'傳說會隨雾散去，但記憶長存。' }
+  ];
+
+  /* ================= 狀態 ================= */
+  var mode='start';  // start | playing | result | over | win
+  var guestIdx=0, cones=3, water=0, chips=0, jackpots=0;
+  var resultLine='', resultGood=false;
+  var shake=0, blink=0, msg='', msgTimer=0;
+  var particles=[];
+  var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+  var SYMBOLS=['7','★','◆','▲','●'];
+
+  /* ================= 音效 ================= */
+  var actx=null;
+  function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+  function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+  function coin(){beep(880,.05,'sine',.04);}
+
+  function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*180;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+  /* ================= 流程 ================= */
+  function resetGame(){
+    guestIdx=0;cones=3;water=0;chips=0;jackpots=0;shake=0;resultLine='';
+    particles=[];slot.active=false;slot.pay=null;slot.timer=0;
+    msg='新客人走進茶館…';msgTimer=1.6;updateHUD();
+  }
+  function startGame(){
+    unlockAudio();resetGame();mode='playing';
+    ['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});
+    coin();
+  }
+  function gameOver(){
+    mode='over';
+    $('finalGuests').textContent=guestIdx;
+    $('finalChips').textContent=chips;
+    $('overScreen').classList.remove('hidden');
+    shake=1;beep(160,.3,'sawtooth',.05);
+  }
+  function win(){
+    mode='win';
+    $('winScore').textContent=chips+' 籌碼';
+    $('winScreen').classList.remove('hidden');
+    beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);
+  }
+  function updateHUD(){
+    $('hChips').textContent=chips;
+    $('hGuests').textContent=guestIdx+'/'+TOTAL_GUESTS;
+    $('hCones').textContent=cones;
+    $('hWater').textContent=Math.round(water)+'%';
+    $('hJackpot').textContent=jackpots;
+  }
+  function addMsg(t){msg=t;msgTimer=1.8;}
+
+  /* ================= 互動 ================= */
+  function gather(){
+    if(mode!=='playing')return;
+    cones++; coin(); addMsg('收集到松果（'+cones+'）'); updateHUD();
+    // 收集松果有代價：每位客人限定次數，用過度會減少獎勵（簡單化：直接扣少許）
+    chips=Math.max(0,chips-2);
+  }
+  function boil(){
+    if(mode!=='playing'||cones<=0||water>=100)return;
+    cones--; water=Math.min(100,water+40+rand(20));
+    beep(440,.08,'triangle',.04);
+    addMsg('茶炊咕嚕作響，水溫 '+Math.round(water)+'%');
+    updateHUD();
+  }
+  function brew(){
+    if(mode!=='playing'||water<60){addMsg('水不夠熱，先煮水！');return;}
+    if(cones<=0){addMsg('沒有松果了！');return;}
+    var herb=HERBS[rand(HERBS.length)];
+    // 結局判定：水溫高 + 昂貴草藥 → 好結局
+    var good=(water>=85 && herb.pay>=80) || (water>=75 && herb.pay>=100);
+    var guest=GUESTS[Math.min(guestIdx,GUESTS.length-1)];
+    resultLine=(good?guest.good:guest.bad);
+    resultGood=good;
+    var pay=herb.pay+(good?60:10);
+    chips+=pay;
+    burst(W/2,230,30,herb.color);
+    beep(good?880:440,.14,'sine',.05);
+    addMsg((good?'✦ 好預言 ':'· 模糊預言 ')+herb.name+' +'+pay);
+    cones--; water=0; guestIdx++;
+    if((guestIdx)%2===0)triggerJackpot();
+    resultLine+='（'+herb.name+' +'+pay+' 籌碼）';
+    mode='result';
+    updateHUD();
+    if(guestIdx>=TOTAL_GUESTS)win();
+  }
+  function nextGuest(){
+    if(mode!=='result')return;
+    mode='playing';addMsg('下一位客人…');
+  }
+  function triggerJackpot(){
+    jackpots++;
+    slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;
+    slot.reels=['7','★','◆'];
+    updateHUD();
+  }
+
+  /* ================= 更新 ================= */
+  function update(dt){
+    blink+=dt;shake=Math.max(0,shake-dt*2.5);
+    if(msgTimer>0)msgTimer-=dt;
+    for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+    if(slot.active){
+      if(slot.t>0){
+        slot.t-=dt;
+        if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+        else if(slot.pay===null&&slot.timer===0){
+          for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+          var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+          var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+          chips+=pay;slot.pay=pay;slot.timer=.01;
+          burst(W/2,H/2,pay>=120?50:18,'#ffd23f');
+          beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();
+        }
+      }
+      if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+    }
+    if(mode!=='playing')return;
+    // 松果耗盡且無水 → game over
+    if(cones<=0 && water<60){gameOver();}
+  }
+
+  /* ================= 繪圖 ================= */
+  function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+  fit();window.addEventListener('resize',fit);
+
+  function render(){
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+    var g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#16281a');g.addColorStop(1,'#0c160e');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // 森林剪影
+    ctx.fillStyle='rgba(30,60,35,.5)';
+    for(var i=0;i<12;i++){var tx=i*70;ctx.beginPath();ctx.moveTo(tx,H);ctx.lineTo(tx+30,120+Math.sin(i)*30);ctx.lineTo(tx+60,H);ctx.fill();}
+    // 茶館
+    ctx.fillStyle='#3a2a1c';ctx.fillRect(140,150,520,220);
+    ctx.fillStyle='#6a3020';ctx.beginPath();ctx.moveTo(120,150);ctx.lineTo(400,60);ctx.lineTo(680,150);ctx.fill();
+    ctx.fillStyle='#ffd88a';ctx.fillRect(230,220,100,90);ctx.fillRect(470,220,100,90);
+    ctx.fillStyle='#5a3a20';ctx.fillRect(370,280,60,90);
+    // 茶炊 Samovar
+    ctx.save();ctx.fillStyle='#b8863a';ctx.beginPath();ctx.ellipse(400,300,50,70,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#e8c060';ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle='#3a2418';ctx.fillRect(385,200,30,20);
+    ctx.fillStyle='#ff9f6b';ctx.beginPath();ctx.arc(400,340,14,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // 水溫計
+    ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(360,110,80,10);
+    ctx.fillStyle=water>75?'#7de0a0':'#ff6b6b';ctx.fillRect(360,110,80*water/100,10);
+    ctx.fillStyle='#e4ecdc';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('水溫 '+Math.round(water)+'%',400,100);
+    // 客人
+    if(guestIdx<TOTAL_GUESTS){
+      var gu=GUESTS[guestIdx];
+      ctx.fillStyle='#c8e0a8';ctx.font='bold 14px system-ui';ctx.textAlign='left';
+      ctx.fillText('客人：'+gu.name,24,40);
+      ctx.fillStyle='#e4ecdc';ctx.font='13px system-ui';
+      ctx.fillText('「'+gu.q+'」',24,64);
+    }
+    // 粒子
+    particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+    // 結果面板
+    if(mode==='result'){
+      ctx.save();ctx.fillStyle='rgba(8,16,10,.94)';ctx.fillRect(120,H/2-60,560,130);
+      ctx.strokeStyle=resultGood?'#7de0a0':'#c8a8f0';ctx.lineWidth=2;ctx.strokeRect(120,H/2-60,560,130);
+      ctx.fillStyle=resultGood?'#c8e0a8':'#d0c0e0';ctx.font='14px system-ui';ctx.textAlign='center';
+      ctx.fillText(resultLine,W/2,H/2-10,520);
+      ctx.fillStyle='#cdb894';ctx.font='12px system-ui';ctx.fillText('按「調茶預言」繼續',W/2,H/2+42);
+      ctx.restore();
+    }
+    // JACKPOT
+    if(slot.active){
+      ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+      ctx.fillStyle='rgba(12,20,12,.96)';ctx.fillRect(px,py,pw,ph);
+      ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+      ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+      for(var k=0;k<3;k++){var rw=56,rx=px+20+k*(rw+15),ry=py+28;ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#c8e0a8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[k],rx+rw/2,ry+36);}
+      if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}
+      ctx.restore();
+    }
+    if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,H-26,W,26);ctx.fillStyle='#ffe27a';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-8);ctx.restore();}
+    ctx.restore();
+  }
+
+  /* ================= 主迴圈 ================= */
+  var last=performance.now(),acc=0;
+  function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var s=1/120,g=0;while(acc>=s&&g++<12){update(s);acc-=s;}render();requestAnimationFrame(frame);}
+
+  /* ================= 輸入 ================= */
+  $('gatherBtn').addEventListener('click',function(){gather();});
+  $('boilBtn').addEventListener('click',function(){boil();});
+  $('brewBtn').addEventListener('click',function(){brew();});
+  $('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  $('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+  canvas.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();if(mode==='result')nextGuest();});
+  window.addEventListener('keydown',function(e){unlockAudio();if(e.code==='Space'||e.code==='Enter'){e.preventDefault();if(mode==='result')nextGuest();else brew();}});
+
+  updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
