@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0a14">
+<meta name="description" content="末日信號：改編自 Ludum Dare 60《The Last Signal》的 Casino 解謎遊戲。新舊科技碰撞的雙時空中，解開三個神祕密碼、修復破裂信號，在時間崩解前逃離。">
+<title>末日信號 · THE LAST SIGNAL｜LightSpin</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:radial-gradient(circle at 18% 12%,rgba(120,80,200,.14),transparent 44%),radial-gradient(circle at 82% 24%,rgba(60,180,200,.10),transparent 42%),#05050c;color:#e0e0f0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:12px 10px 24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;color:#c8b8f0;text-shadow:0 0 10px rgba(120,80,200,.7),0 0 26px rgba(60,180,200,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(140,120,220,.35);border-radius:8px;overflow:hidden;touch-action:none;box-shadow:0 0 30px rgba(120,80,200,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:radial-gradient(circle at 50% 40%,rgba(16,12,30,.88),rgba(4,4,10,.96))}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#c8b8f0;text-shadow:0 0 14px rgba(120,80,200,.8),0 0 30px rgba(60,180,200,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2c2e0;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;font-weight:800;letter-spacing:.03em;border:2px solid rgba(140,120,220,.5);color:#c8b8f0;background:rgba(120,80,200,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#8a5ae0,#c8b8f0);color:#120a24;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(120,80,200,.12),rgba(20,16,36,.1));border:1px solid rgba(140,120,220,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0e0f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#9898b8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>末日信號</h1>
+<p class="sub">THE LAST SIGNAL · TWO WORLDS OUT OF SYNC</p>
+<div class="stage">
+<canvas id="game" width="800" height="450" aria-label="末日信號遊戲畫面"></canvas>
+<div class="overlay" id="startScreen">
+<h2>THE LAST SIGNAL</h2>
+<p>老舊機器發出破裂信號，<b style="color:#ff9f6b">時間正在崩解</b>。<br>在新舊科技交錯的兩個時空中，<br>解開<b style="color:#c8b8f0">三道神祕法術</b>，在時間線合一前切斷連結！</p>
+<button class="neon primary" id="startBtn">接收信號</button>
+<p style="font-size:11px;opacity:.75">切換時空找線索 · 輸入三組密碼 · 修復信號</p>
+</div>
+<div class="overlay hidden" id="overScreen">
+<h2>TIMELINE COLLAPSED</h2>
+<p>時間崩解，兩個世界合一了</p>
+<p>解開法術 <b id="finalSpells">0</b> · 籌碼 <b id="finalChips">0</b></p>
+<button class="neon primary" id="againBtn">重新接收</button>
+</div>
+<div class="overlay hidden" id="winScreen">
+<h2>SIGNAL RESTORED</h2>
+<p>你切斷了連結，兩個世界得救了！</p>
+<div class="big" id="winScore">0 籌碼</div>
+<button class="neon primary" id="winAgainBtn">再玩一次</button>
+</div>
+</div>
+<div class="hud">
+<div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+<div><span>法術</span><strong id="hSpells">0/3</strong></div>
+<div><span>時間</span><strong id="hTime">90</strong></div>
+<div><span>時空</span><strong id="hEra">OLD</strong></div>
+<div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+</div>
+<div class="controls">
+<button class="neon" id="shiftBtn">切換時空 (Tab)</button>
+<button class="neon" id="scanBtn">扫描线索 (E)</button>
+<button class="neon gold" id="solveBtn">解開法術 (Space)</button>
+</div>
+<p class="tips">改編自 Ludum Dare 60 作品《The Last Signal》（Sneha）的「雙時空 + 三道密碼 + 時間崩解」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var $=function(id){return document.getElementById(id);};
+var W=800,H=450;
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var rand=function(n){return (Math.random()*n)|0;};
+
+// 三道法術：每道在 OLD / NEW 時空各有半段線索，組合出密碼
+var SPELLS=[
+{name:'回溯之術',old:'齒輪上的數字：3',new:'螢幕上的數字：7',code:'37',pay:120},
+{name:'連線之術',old:'銘牌刻著：5',new:'條碼結尾：2',code:'52',pay:180},
+{name:'切斷之術',old:'真空管編號：9',new:'警示代碼：4',code:'94',pay:260}
+];
+var mode='start';
+var era=0; // 0 OLD, 1 NEW
+var spellIdx=0, discovered={old:false,new:false}, input='';
+var timeLeft=90,chips=0,jackpots=0,solved=0;
+var shake=0,blink=0,msg='',msgTimer=0;
+var particles=[];
+var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+var SYMBOLS=['7','★','◆','▲','●'];
+var actx=null;
+function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function coin(){beep(880,.05,'sine',.04);}
+function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*180;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+function addMsg(t){msg=t;msgTimer=2.2;}
+function updateHUD(){
+$('hChips').textContent=chips;
+$('hSpells').textContent=solved+'/3';
+$('hTime').textContent=Math.max(0,Math.ceil(timeLeft));
+$('hEra').textContent=era===0?'OLD':'NEW';
+$('hJackpot').textContent=jackpots;
+}
+function resetGame(){
+era=0;spellIdx=0;discovered={old:false,new:false};input='';
+timeLeft=90;chips=0;jackpots=0;solved=0;shake=0;particles=[];
+slot.active=false;slot.pay=null;slot.timer=0;
+addMsg('信號接收中…切換時空找線索');updateHUD();
+}
+function startGame(){unlockAudio();resetGame();mode='playing';['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});coin();}
+function gameOver(){mode='over';$('finalSpells').textContent=solved;$('finalChips').textContent=chips;$('overScreen').classList.remove('hidden');shake=1;beep(120,.35,'sawtooth',.06);}
+function win(){mode='win';$('winScore').textContent=chips+' 籌碼';$('winScreen').classList.remove('hidden');beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);}
+function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;slot.reels=['7','★','◆'];addMsg('JACKPOT！時空獎勵');}
+
+function shiftEra(){if(mode!=='playing')return;era=era===0?1:0;input='';beep(era===0?330:660,.08,'triangle',.04);addMsg('切換到 '+(era===0?'舊時代 OLD':'新時代 NEW'));updateHUD();}
+function scan(){
+if(mode!=='playing')return;
+var key=era===0?'old':'new';
+if(discovered[key]){addMsg('此線索已掃描過');return;}
+discovered[key]=true;
+var s=SPELLS[spellIdx];
+addMsg((era===0?'OLD':'NEW')+' 線索：'+(era===0?s.old:s.new));
+beep(720,.08,'sine',.04);
+updateHUD();
+}
+function digit(d){if(mode!=='playing'||input.length>=2)return;input+=d;beep(440,.03,'square',.02);updateHUD();}
+function clearInput(){input='';updateHUD();}
+function solve(){
+if(mode!=='playing')return;
+if(!discovered.old||!discovered.new){addMsg('需要先掃描兩個時空的線索！');return;}
+if(input.length<2){addMsg('輸入兩位數字密碼');return;}
+var s=SPELLS[spellIdx];
+if(input===s.code){
+solved++;chips+=s.pay;
+burst(W/2,220,30,era===0?'#c8b8f0':'#5ee7ff');coin();
+addMsg('法術解開！'+s.name+' +'+s.pay);
+beep(880,.12,'sine',.06);
+if(solved%2===1)triggerJackpot();
+spellIdx++;discovered={old:false,new:false};input='';
+if(solved>=3){win();}
+else{setTimeout(function(){if(mode==='playing')addMsg('下一道法術：'+SPELLS[spellIdx].name);},1200);}
+}else{
+timeLeft=Math.max(0,timeLeft-10);shake=.6;beep(160,.2,'sawtooth',.05);
+addMsg('密碼錯誤！-10 秒');input='';
+if(timeLeft<=0)gameOver();
+}
+updateHUD();
+}
+
+function update(dt){
+blink+=dt;shake=Math.max(0,shake-dt*2.5);
+if(msgTimer>0)msgTimer-=dt;
+for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+if(slot.active){
+if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=120?50:18,'#ffd23f');beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();}}
+if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+}
+if(mode!=='playing')return;
+timeLeft-=dt;
+if(timeLeft<=0){gameOver();return;}
+updateHUD();
+}
+
+function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+fit();window.addEventListener('resize',fit);
+
+function render(){
+ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+var old=era===0;
+var g=ctx.createLinearGradient(0,0,0,H);
+if(old){g.addColorStop(0,'#2a2030');g.addColorStop(1,'#120e18');}
+else{g.addColorStop(0,'#0e2838');g.addColorStop(1,'#06121c');}
+ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+// 背景科技
+if(old){
+ctx.fillStyle='#3a2a1a';ctx.fillRect(120,200,560,180);
+ctx.strokeStyle='#c48c46';ctx.lineWidth=2;ctx.strokeRect(120,200,560,180);
+for(var i=0;i<5;i++){ctx.fillStyle='#8a6a3a';ctx.beginPath();ctx.arc(180+i*110,290,18,0,Math.PI*2);ctx.fill();}
+}else{
+ctx.fillStyle='#102838';ctx.fillRect(120,200,560,180);
+ctx.strokeStyle='#5ee7ff';ctx.lineWidth=2;ctx.strokeRect(120,200,560,180);
+for(var j=0;j<5;j++){ctx.fillStyle='#3a9fc0';ctx.fillRect(160+j*110,260,60,60);ctx.strokeStyle='#5ee7ff';ctx.strokeRect(160+j*110,260,60,60);}
+}
+// 時空標籤
+ctx.fillStyle=old?'#ffd23f':'#5ee7ff';ctx.font='bold 18px ui-monospace,monospace';ctx.textAlign='left';
+ctx.fillText(old?'=== OLD ERA ===':'=== NEW ERA ===',30,40);
+// 法術
+var s=SPELLS[spellIdx];
+if(s){
+ctx.fillStyle='#fff';ctx.font='bold 16px system-ui';ctx.textAlign='center';
+ctx.fillText('法術 '+(spellIdx+1)+'/3：'+s.name,W/2,100);
+ctx.font='14px system-ui';
+ctx.fillStyle=discovered.old?'#ffd23f':'#666';ctx.fillText(discovered.old?('OLD: '+s.old):'OLD: ??? (按 E 掃描 OLD)',W/2,140);
+ctx.fillStyle=discovered.new?'#5ee7ff':'#666';ctx.fillText(discovered.new?('NEW: '+s.new):'NEW: ??? (切換時空後掃描)',W/2,166);
+// 輸入
+ctx.fillStyle='#fff';ctx.font='bold 28px ui-monospace,monospace';ctx.textAlign='center';
+ctx.fillText(input.length?input.padEnd(2,'_'):'__',W/2,430);
+}
+// 時間崩解效果
+var urgency=1-timeLeft/90;
+if(urgency>0.6){ctx.fillStyle='rgba(255,60,60,'+((urgency-0.6)*0.35)+')';ctx.fillRect(0,0,W,H);}
+particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+ctx.fillStyle='rgba(12,10,24,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+for(var k=0;k<3;k++){var rw=56,rx=px+20+k*(rw+15),ry=py+28;ctx.fillStyle='#0c0a18';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#c8b8f0';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[k],rx+rw/2,ry+36);}
+if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,H-70,W,34);ctx.fillStyle='#ffe27a';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-48);ctx.restore();}
+ctx.restore();
+}
+
+$('shiftBtn').addEventListener('click',shiftEra);
+$('scanBtn').addEventListener('click',scan);
+$('solveBtn').addEventListener('click',solve);
+$('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+window.addEventListener('keydown',function(e){
+unlockAudio();
+if(e.code==='Tab'){e.preventDefault();shiftEra();}
+else if(e.code==='KeyE')scan();
+else if(e.code==='Space'){e.preventDefault();solve();}
+else if(e.code==='Backspace')clearInput();
+else if(/^Digit[0-9]$/.test(e.code))digit(e.code.slice(5));
+});
+var last=performance.now(),acc=0;
+function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var step=1/120,g=0;while(acc>=step&&g++<12){update(step);acc-=step;}render();requestAnimationFrame(frame);}
+updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
