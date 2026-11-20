@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e14">
+<meta name="description" content="黃金飛空艇：改編自 Ludum Dare 60《Old Deck》的 Casino 動作遊戲。在復古卡帶飛空艇內走位操作引擎、炮台與貨艙，護送黃金對抗空中海盜，CRT 色差美學重現童年回憶。">
+<title>黃金飛空艇 · GOLDEN AIRSHIP｜LightSpin</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:radial-gradient(circle at 18% 12%,rgba(60,140,180,.14),transparent 44%),radial-gradient(circle at 82% 24%,rgba(200,140,60,.10),transparent 42%),#05080c;color:#e0e8f0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:12px 10px 24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(100%,840px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;color:#9fd0e8;text-shadow:0 0 10px rgba(60,140,180,.7),0 0 26px rgba(200,140,60,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:3px solid #2a2a35;border-radius:12px/8px;overflow:hidden;touch-action:none;box-shadow:0 0 34px rgba(60,140,180,.18),inset 0 0 60px rgba(0,0,0,.7)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:rgba(6,8,14,.93)}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fd0e8;text-shadow:0 0 14px rgba(60,140,180,.8),0 0 30px rgba(200,140,60,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2d2e0;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;font-weight:800;letter-spacing:.03em;border:2px solid rgba(120,170,200,.5);color:#9fd0e8;background:rgba(60,140,180,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon:disabled{opacity:.4;cursor:not-allowed;transform:none}
+button.neon.primary{background:linear-gradient(135deg,#5a9fd0,#9fd0e8);color:#081824;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(60,140,180,.12),rgba(20,26,36,.1));border:1px solid rgba(120,170,200,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0e8f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a8b8;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>黃金飛空艇</h1>
+<p class="sub">GOLDEN AIRSHIP · A GAME WITHIN A GAME</p>
+<div class="stage">
+<canvas id="game" width="800" height="450" aria-label="黃金飛空艇遊戲畫面"></canvas>
+<div class="overlay" id="startScreen">
+<h2>OLD DECK</h2>
+<p>插上舊卡帶，啟動笨重的電視機。<br>你是貨運飛空艇的船長——<b style="color:#ffd23f">在船內走動</b>操作引擎、炮台與貨艙，<br>護送黃金穿過空中海盜的封鎖！</p>
+<button class="neon primary" id="startBtn">插入卡帶</button>
+<p style="font-size:11px;opacity:.75">WASD 走位 · E 操作工作站 · 完成 4 趟航程</p>
+</div>
+<div class="overlay hidden" id="overScreen">
+<h2>GAME OVER</h2>
+<p>飛空艇被擊落，卡帶彈出了…</p>
+<p>完成航程 <b id="finalVoyages">0</b> · 籌碼 <b id="finalChips">0</b></p>
+<button class="neon primary" id="againBtn">重新插卡</button>
+</div>
+<div class="overlay hidden" id="winScreen">
+<h2>CARTRIDGE MASTER</h2>
+<p>所有黃金安全送達！</p>
+<div class="big" id="winScore">0 籌碼</div>
+<button class="neon primary" id="winAgainBtn">再玩一次</button>
+</div>
+</div>
+<div class="hud">
+<div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+<div><span>航程</span><strong id="hVoyage">1/4</strong></div>
+<div><span>船體</span><strong id="hHull">100</strong></div>
+<div><span>黃金</span><strong id="hCargo">5</strong></div>
+<div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+</div>
+<div class="controls">
+<button class="neon" id="leftBtn">◀</button>
+<button class="neon" id="rightBtn">▶</button>
+<button class="neon" id="actBtn">E 操作</button>
+<button class="neon gold" id="fireBtn">開炮 (F)</button>
+</div>
+<p class="tips">改編自 Ludum Dare 60 作品《Old Deck》（Volkolak 等）的「船內走位操作 + 護送貨物 + CRT 色差美學」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var $=function(id){return document.getElementById(id);};
+var W=800,H=450;
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var rand=function(n){return (Math.random()*n)|0;};
+
+var STATIONS=[
+{id:'engine',x:70,y:250,w:120,h:110,color:'#7de0a0',label:'ENGINE'},
+{id:'turret',x:220,y:250,w:120,h:110,color:'#ff8a8a',label:'TURRET'},
+{id:'cargo',x:430,y:250,w:120,h:110,color:'#ffd23f',label:'CARGO'},
+{id:'wheel',x:610,y:250,w:120,h:110,color:'#7db8ff',label:'WHEEL'}
+];
+var mode='start';
+var player={x:400,y:330,w:22,h:28,face:1};
+var hull=100,cargo=5,chips=0,voyage=0,jackpots=0;
+var enginePower=0,progress=0,fireCd=0;
+var enemies=[],shots=[],particles=[];
+var shake=0,blink=0,msg='',msgTimer=0;
+var keys={left:false,right:false,up:false,down:false};
+var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+var SYMBOLS=['7','★','◆','▲','●'];
+var actx=null;
+function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function coin(){beep(880,.05,'sine',.04);}
+function fireSfx(){beep(180,.08,'sawtooth',.05);}
+function boom(){beep(100,.2,'sawtooth',.06);}
+function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*200;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+function addMsg(t){msg=t;msgTimer=1.6;}
+function updateHUD(){
+$('hChips').textContent=chips;
+$('hVoyage').textContent=Math.min(voyage+1,4)+'/4';
+$('hHull').textContent=Math.round(hull);
+$('hCargo').textContent=cargo;
+$('hJackpot').textContent=jackpots;
+}
+function resetVoyage(){hull=100;cargo=5;progress=0;enginePower=0;enemies=[];shots=[];player.x=400;addMsg('第 '+(voyage+1)+' 趟航程開始！');updateHUD();}
+function resetGame(){chips=0;voyage=0;jackpots=0;shake=0;particles=[];slot.active=false;slot.pay=null;resetVoyage();}
+function startGame(){unlockAudio();resetGame();mode='playing';['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});coin();}
+function gameOver(){mode='over';$('finalVoyages').textContent=voyage;$('finalChips').textContent=chips;$('overScreen').classList.remove('hidden');shake=1;boom();}
+function win(){mode='win';$('winScore').textContent=chips+' 籌碼';$('winScreen').classList.remove('hidden');beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);}
+function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;slot.reels=['7','★','◆'];addMsg('JACKPOT 寶藏獎勵！');}
+
+function stationAt(x,y){for(var i=0;i<STATIONS.length;i++){var s=STATIONS[i];if(x>=s.x&&x<=s.x+s.w&&y>=s.y&&y<=s.y+s.h)return s;}return null;}
+function interact(){
+if(mode!=='playing')return;
+var s=stationAt(player.x,player.y);
+if(!s){addMsg('走到工作站再按 E');return;}
+if(s.id==='engine'){enginePower=Math.min(100,enginePower+30);beep(440,.07,'triangle',.04);addMsg('引擎出力 '+Math.round(enginePower));}
+else if(s.id==='turret'){fire();}
+else if(s.id==='cargo'){cargo=Math.min(8,cargo+1);coin();addMsg('整理貨艙 +1 黃金');}
+else if(s.id==='wheel'){progress=Math.min(100,progress+15);beep(660,.08,'square',.04);addMsg('掌舵前進 '+Math.round(progress)+'%');}
+updateHUD();
+}
+function fire(){
+if(mode!=='playing'||fireCd>0)return;
+fireCd=.25;fireSfx();
+shots.push({x:player.x,y:player.y-20,vx:0,vy:-320});
+}
+function spawnEnemy(){enemies.push({x:80+rand(640),y:-30,vx:(Math.random()-.5)*40,vy:40+rand(30),hp:1});}
+
+function update(dt){
+blink+=dt;shake=Math.max(0,shake-dt*2.5);
+if(msgTimer>0)msgTimer-=dt;
+if(fireCd>0)fireCd-=dt;
+for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+if(slot.active){
+if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=120?50:18,'#ffd23f');beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();}}
+if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+}
+if(mode!=='playing')return;
+
+if(keys.left)player.x-=160*dt;
+if(keys.right)player.x+=160*dt;
+if(keys.up)player.y-=120*dt;
+if(keys.down)player.y+=120*dt;
+player.x=clamp(player.x,30,W-30);
+player.y=clamp(player.y,240,H-24);
+
+enginePower=Math.max(0,enginePower-dt*4);
+progress+=dt*(enginePower>30?1.6:0.2);
+if(Math.random()<dt*0.4)spawnEnemy();
+
+for(var e=enemies.length-1;e>=0;e--){
+var en=enemies[e];en.x+=en.vx*dt;en.y+=en.vy*dt;
+if(en.y>H){enemies.splice(e,1);cargo=Math.max(0,cargo-1);hull=Math.max(0,hull-12);boom();addMsg('海盜得手！-1 黃金');updateHUD();}
+}
+for(var s=shots.length-1;s>=0;s--){
+var sh=shots[s];sh.y+=sh.vy*dt;
+var hit=false;
+for(var e2=enemies.length-1;e2>=0;e2--){
+var en2=enemies[e2];
+if(Math.abs(sh.x-en2.x)<22&&Math.abs(sh.y-en2.y)<22){
+enemies.splice(e2,1);shots.splice(s,1);hit=true;
+burst(en2.x,en2.y,14,'#ffd23f');coin();chips+=15;addMsg('擊落海盜 +15');updateHUD();break;}
+}
+if(!hit&&sh.y<-20)shots.splice(s,1);
+}
+if(hull<=0||cargo<=0){gameOver();return;}
+if(progress>=100){
+var pay=280+cargo*45;chips+=pay;voyage++;
+burst(W/2,220,30,'#ffd23f');coin();addMsg('抵港！+'+pay);
+if(voyage%2===1)triggerJackpot();
+if(voyage>=4){win();}else{setTimeout(function(){if(mode==='playing')resetVoyage();},1400);}
+progress=0;
+}
+updateHUD();
+}
+
+function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+fit();window.addEventListener('resize',fit);
+
+function render(){
+ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+// 天空
+var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a2a3a');g.addColorStop(1,'#0a1018');
+ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+// 雲
+ctx.fillStyle='rgba(200,220,240,.08)';
+for(var c=0;c<5;c++){ctx.beginPath();ctx.ellipse((c*180+blink*20)%900-50,60+c*28,80,20,0,0,Math.PI*2);ctx.fill();}
+// 飛空艇船體
+ctx.fillStyle='#4a3524';ctx.fillRect(40,240,720,180);
+ctx.strokeStyle='#c48c46';ctx.lineWidth=3;ctx.strokeRect(40,240,720,180);
+// 氣球
+ctx.fillStyle='#6a5a4a';ctx.beginPath();ctx.ellipse(400,150,300,70,0,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle='#a08a6a';ctx.lineWidth=2;ctx.stroke();
+// 工作站
+STATIONS.forEach(function(s){
+ctx.fillStyle='rgba(20,28,40,.9)';ctx.fillRect(s.x,s.y,s.w,s.h);
+ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.strokeRect(s.x,s.y,s.w,s.h);
+ctx.fillStyle=s.color;ctx.font='bold 11px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText(s.label,s.x+s.w/2,s.y+20);
+ctx.font='24px system-ui';
+var icon={engine:'⚙',turret:'🔫',cargo:'💰',wheel:'⚓'}[s.id];
+ctx.fillText(icon,s.x+s.w/2,s.y+52);
+});
+// 玩家
+ctx.save();ctx.fillStyle='#e0b890';ctx.beginPath();ctx.arc(player.x,player.y-8,10,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#3a2418';ctx.beginPath();ctx.arc(player.x+player.face*3,player.y-10,2.5,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#5a8fc0';ctx.fillRect(player.x-9,player.y,18,16);ctx.restore();
+// 敵人
+enemies.forEach(function(en){ctx.save();ctx.fillStyle='#c8a8f0';ctx.beginPath();ctx.arc(en.x,en.y,14,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#3a1a4a';ctx.beginPath();ctx.arc(en.x,en.y-4,3,0,Math.PI*2);ctx.fill();ctx.restore();});
+// 炮彈
+shots.forEach(function(sh){ctx.fillStyle='#ffd23f';ctx.fillRect(sh.x-3,sh.y-8,6,16);});
+// HUD
+ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(240,H-30,320,10);
+ctx.fillStyle='#7de0a0';ctx.fillRect(240,H-30,320*progress/100,10);
+ctx.fillStyle='#e0e8f0';ctx.font='bold 11px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText('航程 '+Math.round(progress)+'% · 引擎 '+Math.round(enginePower),400,H-36);
+particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+ctx.fillStyle='rgba(10,12,20,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+for(var i=0;i<3;i++){var rw=56,rx=px+20+i*(rw+15),ry=py+28;ctx.fillStyle='#0c1018';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#9fd0e8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[i],rx+rw/2,ry+36);}
+if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+// CRT 色差掃描線
+ctx.fillStyle='rgba(0,0,0,.14)';for(var y=0;y<H;y+=4)ctx.fillRect(0,y,W,1);
+if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,H-70,W,28);ctx.fillStyle='#ffe27a';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-50);ctx.restore();}
+ctx.restore();
+}
+
+var KEY={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down'};
+window.addEventListener('keydown',function(e){unlockAudio();if(KEY[e.code]){e.preventDefault();keys[KEY[e.code]]=true;}
+if(e.code==='KeyE')interact();if(e.code==='KeyF')fire();});
+window.addEventListener('keyup',function(e){if(KEY[e.code])keys[KEY[e.code]]=false;});
+canvas.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();fire();});
+function hold(id,k){var b=$(id);b.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();keys[k]=true;});b.addEventListener('pointerup',function(){keys[k]=false;});b.addEventListener('pointerleave',function(){keys[k]=false;});}
+hold('leftBtn','left');hold('rightBtn','right');
+$('actBtn').addEventListener('click',interact);
+$('fireBtn').addEventListener('click',fire);
+$('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+var last=performance.now(),acc=0;
+function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var step=1/120,g=0;while(acc>=step&&g++<12){update(step);acc-=step;}render();requestAnimationFrame(frame);}
+updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
