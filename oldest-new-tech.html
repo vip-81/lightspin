@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#12101c">
+<meta name="description" content="古老新科技：改編自 Ludum Dare 60《The Oldest New Tech》的 Casino 視覺小說。兩位老巫師爭論文字的價值，透過對話選擇和解開隐藏結局，賺取籌碼成為傳奇說書人。">
+<title>古老新科技 · OLDEST NEW TECH｜LightSpin</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:radial-gradient(circle at 18% 12%,rgba(120,90,180,.14),transparent 44%),radial-gradient(circle at 82% 24%,rgba(200,150,80,.10),transparent 42%),#08060e;color:#e8e0f0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:12px 10px 24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;color:#d8c0f0;text-shadow:0 0 10px rgba(120,90,180,.7),0 0 26px rgba(200,150,80,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(140,110,200,.35);border-radius:8px;overflow:hidden;touch-action:none;box-shadow:0 0 30px rgba(120,90,180,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:rgba(8,6,14,.92)}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#d8c0f0;text-shadow:0 0 14px rgba(120,90,180,.8),0 0 30px rgba(200,150,80,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c8c0d8;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+button.neon{cursor:pointer;min-height:44px;padding:9px 16px;border-radius:6px;font:inherit;font-weight:800;border:2px solid rgba(140,110,200,.5);color:#d8c0f0;background:rgba(120,90,180,.12);transition:transform .12s ease,filter .2s ease;font-size:12px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#8a5ae0,#d8c0f0);color:#140a24;border-color:transparent}
+.choices{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;gap:8px;align-items:center;padding:0 20px}
+.choices button{width:min(100%,560px);text-align:left}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(120,90,180,.12),rgba(20,16,30,.1));border:1px solid rgba(140,110,200,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e8e0f0;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#9890a8;text-align:center}
+.tips b{color:#ffd23f}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>古老新科技</h1>
+<p class="sub">THE OLDEST NEW TECH · A TALE OF TWO WIZARDS</p>
+<div class="stage">
+<canvas id="game" width="800" height="450" aria-label="古老新科技遊戲畫面"></canvas>
+<div class="overlay" id="startScreen">
+<h2>THE OLDEST NEW TECH</h2>
+<p>兩位老巫師 Fritz 與 Jeremiah 又開始爭論了：<br>「文字，究竟是最古老的科技，還是全新的奇蹟？」<br>你的選擇，將寫下不同的結局。</p>
+<button class="neon primary" id="startBtn">翻開故事</button>
+<p style="font-size:11px;opacity:.75">點擊推進對話 · 做出選擇 · 解鎖 4 種結局</p>
+</div>
+<div class="overlay hidden" id="endScreen">
+<h2 id="endTitle">THE END</h2>
+<p id="endText"></p>
+<div class="big" id="endChips">0 籌碼</div>
+<button class="neon primary" id="againBtn">再讀一次</button>
+</div>
+<div class="choices hidden" id="choices"></div>
+</div>
+<div class="hud">
+<div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+<div><span>結局</span><strong id="hEndings">0/4</strong></div>
+<div><span>對話</span><strong id="hLine">0</strong></div>
+<div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+</div>
+<p class="tips">改編自 Ludum Dare 60 作品《The Oldest New Tech》（Kobato Games）的「視覺小說 + 對話選擇 + 多結局」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var $=function(id){return document.getElementById(id);};
+var W=800,H=450;
+var rand=function(n){return (Math.random()*n)|0;};
+
+// 對話腳本：node = {speaker, text, next, choices, ending}
+var SCRIPT={
+start:{speaker:'旁白',text:'黃昏，老巫師 Fritz 與 Jeremiah 坐在佈滿粉筆灰的黑板和前。',next:'a1'},
+a1:{speaker:'Fritz',text:' Jeremiah！我把咒語寫成文字，弟子們再也不必死記硬背。這難道不是最偉大的科技？',next:'a2'},
+a2:{speaker:'Jeremiah',text:'哼。文字？古老得像洞穴壁畫。真正的魔法在於口耳相傳——聲音才有靈魂。',choices:[
+{text:'支持 Fritz：文字是永恆的科技',next:'f1'},
+{text:'支持 Jeremiah：聲音才是真魔法',next:'j1'},
+{text:'反問：兩者不都是「Old Tech」嗎？',next:'n1'}
+]},
+f1:{speaker:'Fritz',text:'正是！文字能跨越時間。你看，我這本gravimoire 已傳了七代弟子！',next:'f2'},
+f2:{speaker:'Jeremiah',text:'（嘆氣）罷了…既然你這麼篤信文字，不如我們打個賭？',next:'f3'},
+f3:{speaker:'Fritz',text:'打賭？賭什麼？',choices:[
+{text:'賭一籌：誰先寫出動人的故事',next:'end_story',pay:160},
+{text:'賭一籌：誰的文字能召喚金幣',next:'end_gold',pay:220}
+]},
+j1:{speaker:'Jeremiah',text:'沒錯！當年我師傅的師傅，只用一個音節就讓整座山移開。文字做得到嗎？',next:'j2'},
+j2:{speaker:'Fritz',text:'（翻白眼）你又在吹噓了。那你的「音節」現在還記得嗎？',next:'j3'},
+j3:{speaker:'Jeremiah',text:'…這個嘛…',choices:[
+{text:'提醒他：遺忘正是文字存在的理由',next:'end_wisdom',pay:180},
+{text:'嘲笑他：所以你輸了',next:'end_laugh',pay:120}
+]},
+n1:{speaker:'旁白',text:'兩位老巫師同時愣住，接著爆出大笑。',next:'n2'},
+n2:{speaker:'Fritz',text:'哈哈！你這小子倒是機靈。',next:'n3'},
+n3:{speaker:'Jeremiah',text:'說得對——新與舊，不過是同一條河的兩岸。',choices:[
+{text:'提議：把辯論寫成一本書',next:'end_book',pay:260},
+{text:'提議：把辯論譜成一首歌',next:'end_song',pay:200}
+]},
+end_story:{speaker:'旁白',text:'【結局：傳奇作家】Fritz 寫下的故事流傳千年，你獲得了 160 籌碼。',ending:'傳奇作家',pay:160},
+end_gold:{speaker:'旁白',text:'【結局：點金術士】文字真的召喚出金幣！你獲得了 220 籌碼。',ending:'點金術士',pay:220},
+end_wisdom:{speaker:'旁白',text:'【結局：智慧長者】你的機智讓兩位巫師折服，獲得 180 籌碼。',ending:'智慧長者',pay:180},
+end_laugh:{speaker:'旁白',text:'【結局：狡黠小丑】你笑到了最後，也賺到了 120 籌碼。',ending:'狡黠小丑',pay:120},
+end_book:{speaker:'旁白',text:'【結局：永遠的書】你的書成了傳世經典，獲得 260 籌碼。',ending:'永遠的書',pay:260},
+end_song:{speaker:'旁白',text:'【結局：不朽之歌】你的歌在酒館傳唱不息，獲得 200 籌碼。',ending:'不朽之歌',pay:200}
+};
+var ENDINGS=['end_story','end_gold','end_wisdom','end_laugh','end_book','end_song'];
+
+var mode='start';
+var node='start',chips=0,jackpots=0,lineCount=0;
+var foundEndings={};
+var shake=0,blink=0,typed=0,typeTimer=0;
+var particles=[];
+var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+var SYMBOLS=['7','★','◆','▲','●'];
+var actx=null;
+function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function coin(){beep(880,.05,'sine',.04);}
+function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*160;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-60,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+function updateHUD(){
+$('hChips').textContent=chips;
+$('hEndings').textContent=Object.keys(foundEndings).length+'/6';
+$('hLine').textContent=lineCount;
+$('hJackpot').textContent=jackpots;
+}
+function resetGame(){node='start';chips=0;jackpots=0;lineCount=0;foundEndings={};shake=0;typed=0;typeTimer=0;particles=[];slot.active=false;slot.pay=null;updateHUD();}
+function startGame(){unlockAudio();resetGame();mode='playing';$('startScreen').classList.add('hidden');$('endScreen').classList.add('hidden');$('choices').classList.add('hidden');beep(523,.1,'sine',.04);showNode();}
+function showNode(){
+var n=SCRIPT[node];
+typed=0;typeTimer=0;
+$('choices').classList.add('hidden');
+$('choices').innerHTML='';
+if(n.ending){
+// 結局
+foundEndings[node]=true;
+var pay=n.pay||0;chips+=pay;
+burst(W/2,220,30,'#ffd23f');coin();
+if(Object.keys(foundEndings).length%2===0)triggerJackpot();
+$('endTitle').textContent=n.ending;
+$('endText').textContent=n.text;
+$('endChips').textContent=pay+' 籌碼';
+$('endScreen').classList.remove('hidden');
+mode='end';
+}else{
+lineCount++;
+beep(300+rand(200),.03,'square',.02);
+}
+updateHUD();
+}
+function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;slot.reels=['7','★','◆'];beep(660,.1,'sine',.05);}
+function advance(){
+if(mode!=='playing')return;
+var n=SCRIPT[node];
+if(typed < n.text.length){typed=n.text.length;return;}
+if(n.choices){
+// 顯示選項
+var c=$('choices');c.innerHTML='';c.classList.remove('hidden');
+n.choices.forEach(function(choice){
+var b=document.createElement('button');b.className='neon';b.textContent=choice.text;
+b.addEventListener('click',function(e){e.stopPropagation();unlockAudio();node=choice.next;showNode();});
+c.appendChild(b);
+});
+}else if(n.next){node=n.next;showNode();}
+}
+
+function update(dt){
+blink+=dt;shake=Math.max(0,shake-dt*2.5);
+for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+if(slot.active){
+if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=120?50:18,'#ffd23f');beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();}}
+if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+}
+if(mode!=='playing')return;
+var n=SCRIPT[node];
+if(n&&typed<n.text.length){typeTimer+=dt;if(typeTimer>0.022){typeTimer=0;typed++;if(typed%4===0)beep(500+rand(200),.015,'square',.015);}}
+}
+
+function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+fit();window.addEventListener('resize',fit);
+
+function render(){
+ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+// 背景
+var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a1428');g.addColorStop(1,'#0a0812');
+ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+// 窗戶與黃昏
+ctx.fillStyle='#3a2a4a';ctx.fillRect(60,40,220,220);
+ctx.fillStyle='#d0a060';ctx.beginPath();ctx.arc(170,150,60,0,Math.PI*2);ctx.fill();
+// 黑板
+ctx.fillStyle='#152018';ctx.fillRect(320,60,420,220);
+ctx.strokeStyle='#6a5a40';ctx.lineWidth=8;ctx.strokeRect(320,60,420,220);
+ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='italic 22px serif';ctx.textAlign='center';
+ctx.fillText('THE WORD IS OLD',530,120);
+ctx.fillText('YET EVER NEW',530,160);
+ctx.font='16px serif';ctx.fillText('~ Fritz & Jeremiah',530,210);
+// 兩個巫師剪影
+drawWizard(170,340,'#6a4a90','F');
+drawWizard(330,340,'#4a7a8a','J');
+// 對話框
+var n=SCRIPT[node];
+if(n&&mode==='playing'){
+ctx.fillStyle='rgba(10,8,20,.92)';ctx.fillRect(30,H-160,W-60,130);
+ctx.strokeStyle='#8a6ac0';ctx.lineWidth=2;ctx.strokeRect(30,H-160,W-60,130);
+ctx.fillStyle='#ffd23f';ctx.font='bold 18px system-ui';ctx.textAlign='left';
+ctx.fillText('【'+n.speaker+'】',50,H-132);
+ctx.fillStyle='#e8e0f0';ctx.font='16px system-ui';
+var text=n.text.slice(0,typed);
+wrapText(ctx,text,50,H-104,W-100,24);
+if(typed<n.text.length){ctx.fillStyle='#ffd23f';ctx.fillText('▼',W-60,H-40);}
+}
+particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+ctx.fillStyle='rgba(12,10,24,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+for(var i=0;i<3;i++){var rw=56,rx=px+20+i*(rw+15),ry=py+28;ctx.fillStyle='#0c0a18';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#d8c0f0';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[i],rx+rw/2,ry+36);}
+if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+ctx.restore();
+}
+function drawWizard(x,y,color,label){
+ctx.save();ctx.fillStyle=color;
+ctx.beginPath();ctx.moveTo(x,y-90);ctx.lineTo(x+40,y+40);ctx.lineTo(x-40,y+40);ctx.closePath();ctx.fill();
+ctx.fillStyle='#e8c8a0';ctx.beginPath();ctx.arc(x,y-70,18,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x-6,y-72,2.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(x+6,y-72,2.5,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#fff';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(label,x,y-105);
+ctx.restore();
+}
+function wrapText(ctx,text,x,y,maxW,lh){
+var line='';var yy=y;
+for(var i=0;i<text.length;i++){
+var test=line+text[i];
+if(ctx.measureText(test).width>maxW){ctx.fillText(line,x,yy);line=text[i];yy+=lh;}
+else line=test;
+}
+if(line)ctx.fillText(line,x,yy);
+}
+
+canvas.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();advance();});
+window.addEventListener('keydown',function(e){unlockAudio();if(e.code==='Space'||e.code==='Enter'){e.preventDefault();advance();}});
+$('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+var last=performance.now(),acc=0;
+function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var step=1/120,g=0;while(acc>=step&&g++<12){update(step);acc-=step;}render();requestAnimationFrame(frame);}
+updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
