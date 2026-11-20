@@ -1,11 +1,11 @@
 # LightSpin 輕量博弈實驗室
 
-> 以原生 JavaScript 與 HTML5 Canvas 打造的二十三款零依賴博弈遊戲示範站：3 軸老虎機、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）、古機拆解（三階段拆解 + 倒帶）、黃金總機（限時配對）、金幣鐘錶匠（猜機構調時出貨）、摩斯金庫（電報摩斯解碼）、金庫神探（SVGA 復古偵探解謎）、霓虹掃描線（CRT 電子槍手動掃描）、彩繪賭場（Casino 放置經營）、賭場搬運部（倉鼠搬運模擬）、洪流打撈（洪水救援）、運鈔車大盜（零件組裝平台）、圓木物流（圓木滾輪運輸）、命運茶館（改編自 Ludum Dare 60《Teteria》的煮茶預言敘事）。展示 60 FPS 渲染、有限狀態機、物件池粒子、交錯減速、超調回彈與完整 SEO / GEO 最佳實踐。所有內容皆為靜態檔案，可同時部署到 GitHub Pages 與 Cloudflare Pages。
+> 以原生 JavaScript 與 HTML5 Canvas 打造的二十四款零依賴博弈遊戲示範站：3 軸老虎機、霓虹轉盤打磚塊、5×3 滾輪停止控制器、黃金末班車（迷霧追逐）、帶電賭徒（通電移動）、發條大盜（蒸氣龐克平台偷引擎）、古機拆解（三階段拆解 + 倒帶）、黃金總機（限時配對）、金幣鐘錶匠（猜機構調時出貨）、摩斯金庫（電報摩斯解碼）、金庫神探（SVGA 復古偵探解謎）、霓虹掃描線（CRT 電子槍手動掃描）、彩繪賭場（Casino 放置經營）、賭場搬運部（倉鼠搬運模擬）、洪流打撈（洪水救援）、運鈔車大盜（零件組裝平台）、圓木物流（圓木滾輪運輸）、命運茶館（改編自 Ludum Dare 60《Teteria》的煮茶預言敘事）。展示 60 FPS 渲染、有限狀態機、物件池粒子、交錯減速、超調回彈與完整 SEO / GEO 最佳實踐。所有內容皆為靜態檔案，可同時部署到 GitHub Pages 與 Cloudflare Pages。
 
 ## 核心內容
 
 - [首頁](https://vip-81.github.io/lightspin/): 3 軸 Canvas 老虎機示範，可直接在瀏覽器試玩，支援鍵盤空白鍵與行動裝置觸控。
-- [作品集](https://vip-81.github.io/lightspin/#works): 二十三款零依賴作品的結構化清單，採 ItemList 標記，方便 AI 摘要與引用。
+- [作品集](https://vip-81.github.io/lightspin/#works): 二十四款零依賴作品的結構化清單，採 ItemList 標記，方便 AI 摘要與引用。
 - [遊戲示範](https://vip-81.github.io/lightspin/#demo): 三軸老虎機，展示 FSM、物件池、緩動動畫與粒子特效。
 - [霓虹轉盤打磚塊](https://vip-81.github.io/lightspin/neon-slot-breaker.html): 賽博朋克風格單檔打磚塊，符號分值、連擊倍率、每 10 塊觸發 JACKPOT 金幣雨，支援鍵盤與觸控。
 - [5×3 滾輪控制器 Demo](https://vip-81.github.io/lightspin/reel-demo.html): 純 JavaScript 邏輯層互動範例，展示 Idle→SpinUp→LoopScroll→SpinDown→Bounce→ResultShow、200ms 交錯停止與超調回彈。
@@ -30,6 +30,7 @@
 - [圖文電視賭場](https://vip-81.github.io/lightspin/oad-teletext.html): 改編自 Ludum Dare 60《OadText》——輸入三位數頁碼探索隱藏頻道、解鎖老虎機與河內塔等秘密，探索所有頁面成為 Teletext 大師。
 - [末日信號](https://vip-81.github.io/lightspin/last-signal.html): 改編自 Ludum Dare 60《The Last Signal》——在新舊科技交錯的雙時空中掃描線索、解開三道法術密碼，在時間崩解前切斷連結。
 - [古老新科技](https://vip-81.github.io/lightspin/oldest-new-tech.html): 改編自 Ludum Dare 60《The Oldest New Tech》——兩位老巫師爭論文字的價值，透過對話選擇和解開六種結局，成為傳奇說書人。
+- [金幣暖爐](https://vip-81.github.io/lightspin/kamchatka-casino.html): 改編自 Ludum Dare 60《Kamchatka》——1980 年代蘇聯司爐工，鏟煤控風門、分配暖氣讓 35 間公寓住戶舒適，賺舒適度升級設備。
 - [技術特色](https://vip-81.github.io/lightspin/#features): 六項設計重點——60 FPS 渲染、有限狀態機、物件池、音效解鎖、SEO/GEO、防作弊思維。
 - [開源來源](https://vip-81.github.io/lightspin/#sources): 精選 GitHub Topics、itch.io、GitHub Trending、Ludum Dare、Simple Game Tutorials 等來源。
 - [常見問題](https://vip-81.github.io/lightspin/#faq): 六問六答，說明定義、作品清單、相容性、RTP/RNG、API 金鑰安全與部署方式。
