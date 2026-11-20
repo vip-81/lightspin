@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#141018">
+<meta name="description" content="金幣暖爐：改編自 Ludum Dare 60《Kamchatka》的 Casino 模擬遊戲。1980 年代蘇聯司爐工，鏟煤控風門、分配暖氣讓 35 間公寓住戶舒適，賺舒適度升級設備並解鎖金曲收藏。">
+<title>金幣暖爐 · KAMCHATKA CASINO｜LightSpin</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:radial-gradient(circle at 18% 12%,rgba(200,120,80,.12),transparent 44%),radial-gradient(circle at 82% 24%,rgba(80,140,200,.10),transparent 42%),#08060a;color:#e8e0d8;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:12px 10px 24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(100%,840px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;color:#f0c898;text-shadow:0 0 10px rgba(200,120,80,.7),0 0 26px rgba(80,140,200,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(200,150,100,.35);border-radius:8px;overflow:hidden;touch-action:none;box-shadow:0 0 30px rgba(200,120,80,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:rgba(8,6,6,.92)}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#f0c898;text-shadow:0 0 14px rgba(200,120,80,.8),0 0 30px rgba(80,140,200,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#cfc4b8;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+button.neon{cursor:pointer;min-height:38px;padding:7px 12px;border-radius:6px;font:inherit;font-weight:800;letter-spacing:.03em;border:2px solid rgba(200,150,100,.5);color:#f0c898;background:rgba(200,120,80,.12);transition:transform .12s ease,filter .2s ease;font-size:11px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon:disabled{opacity:.4;cursor:not-allowed;transform:none}
+button.neon.primary{background:linear-gradient(135deg,#d08050,#f0c898);color:#180c08;border-color:transparent}
+button.neon.gold{background:linear-gradient(135deg,#ffb347,#ffd98a);color:#2a1608;border-color:transparent}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(200,120,80,.12),rgba(20,16,12,.1));border:1px solid rgba(200,150,100,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e8e0d8;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98908a;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>金幣暖爐</h1>
+<p class="sub">KAMCHATKA CASINO · KEEP THE BUILDING WARM</p>
+<div class="stage">
+<canvas id="game" width="800" height="450" aria-label="金幣暖爐遊戲畫面"></canvas>
+<div class="overlay" id="startScreen">
+<h2>KAMCHATKA</h2>
+<p>1980 年代列寧格勒，你是「堪察加」鍋爐房的司爐工。<br>鏟煤、調風門、分配暖氣，<br>讓 35 間公寓的住戶<b style="color:#f0c898">舒適溫暖</b>，賺取舒適度升級設備！</p>
+<button class="neon primary" id="startBtn">點燃鍋爐</button>
+<p style="font-size:11px;opacity:.75">完成 5 項升級 + 35 間公寓全舒適即達成目標</p>
+</div>
+<div class="overlay hidden" id="overScreen">
+<h2>BOILER SHUTDOWN</h2>
+<p>住戶全跑光了，鍋爐房倒閉…</p>
+<p>升級 <b id="finalUpgrades">0</b>/5 · 舒適公寓 <b id="finalComfort">0</b></p>
+<button class="neon primary" id="againBtn">重新點火</button>
+</div>
+<div class="overlay hidden" id="winScreen">
+<h2>WINTER CONQUERED</h2>
+<p>你讓整棟大樓度過了寒冬！</p>
+<div class="big" id="winScore">0 籌碼</div>
+<button class="neon primary" id="winAgainBtn">再玩一次</button>
+</div>
+</div>
+<div class="hud">
+<div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+<div><span>升級</span><strong id="hUpgrades">0/5</strong></div>
+<div><span>舒適戶</span><strong id="hComfort">0/35</strong></div>
+<div><span>室外</span><strong id="hWeather">-10°C</strong></div>
+<div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+</div>
+<div class="controls">
+<button class="neon" id="coalBtn">鏟煤 (1)</button>
+<button class="neon" id="draftBtn">風門：中</button>
+<button class="neon" id="distBtn">分配熱量 (2)</button>
+<button class="neon gold" id="upgradeBtn">升級 (U)</button>
+</div>
+<p class="tips">改編自 Ludum Dare 60 作品《Kamchatka》（Juliet.mg &amp; Kirill Balak）的「燒煤控溫 + 住戶滿意 + 升級」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var $=function(id){return document.getElementById(id);};
+var W=800,H=450;
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var rand=function(n){return (Math.random()*n)|0;};
+
+var FLOORS=5,ROOMS=7,TOTAL=FLOORS*ROOMS;
+var DRAFTS=['低','中','高'];
+var mode='start';
+var coal=50,furnace=20,draft=1,distribution=[1,1,1,1,1]; // 每層熱量分配
+var apartments=[]; // {temp, occupied, comfort}
+var weather=-10, weatherTimer=0;
+var chips=0,upgrades=0,jackpots=0,comfortPts=0;
+var shake=0,blink=0,msg='',msgTimer=0;
+var particles=[];
+var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+var SYMBOLS=['7','★','◆','▲','●'];
+var actx=null;
+function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function coin(){beep(880,.05,'sine',.04);}
+function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*160;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-60,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+function addMsg(t){msg=t;msgTimer=1.8;}
+function updateHUD(){
+$('hChips').textContent=chips;
+$('hUpgrades').textContent=upgrades+'/5';
+var com=apartments.filter(function(a){return a.occupied&&a.comfort;}).length;
+$('hComfort').textContent=com+'/'+TOTAL;
+$('hWeather').textContent=weather+'°C';
+$('hJackpot').textContent=jackpots;
+}
+function initApts(){apartments=[];for(var i=0;i<TOTAL;i++)apartments.push({temp:18+rand(6),occupied:true,comfort:false,discontent:0});}
+function resetGame(){
+coal=50;furnace=20;draft=1;distribution=[1,1,1,1,1];
+weather=-10;weatherTimer=0;chips=0;upgrades=0;jackpots=0;comfortPts=0;shake=0;
+particles=[];slot.active=false;slot.pay=null;initApts();
+addMsg('冬天來了，點燃鍋爐！');updateHUD();
+}
+function startGame(){unlockAudio();resetGame();mode='playing';['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});coin();}
+function gameOver(){mode='over';$('finalUpgrades').textContent=upgrades;$('finalComfort').textContent=apartments.filter(function(a){return a.occupied;}).length;$('overScreen').classList.remove('hidden');shake=1;beep(120,.35,'sawtooth',.06);}
+function win(){mode='win';$('winScore').textContent=chips+' 籌碼';$('winScreen').classList.remove('hidden');beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);}
+function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;slot.reels=['7','★','◆'];addMsg('JACKPOT 暖氣獎勵！');}
+
+function addCoal(){
+if(mode!=='playing'||coal<=0)return;
+coal--;furnace=Math.min(100,furnace+8+upgrades*2);
+beep(200,.06,'square',.04);addMsg('鏟煤！爐溫 '+Math.round(furnace));updateHUD();
+}
+function cycleDraft(){
+if(mode!=='playing')return;
+draft=(draft+1)%3;
+$('draftBtn').textContent='風門：'+DRAFTS[draft];
+beep(300+draft*100,.05,'square',.03);addMsg('風門設為 '+DRAFTS[draft]);
+}
+function distribute(){
+if(mode!=='playing')return;
+// 循環把熱量導向不同樓層
+var f=rand(FLOORS);
+distribution[f]=Math.min(3,distribution[f]+1);
+beep(440+f*60,.05,'triangle',.03);addMsg('熱量導向 '+(f+1)+' 樓');
+}
+function buyUpgrade(){
+if(mode!=='playing'||comfortPts<30||upgrades>=5){addMsg('舒適度不足或已滿級');return;}
+comfortPts-=30;upgrades++;
+coal+=20;furnace=Math.min(100,furnace+15);
+burst(W/2,220,24,'#ffd23f');coin();addMsg('升級完成！等級 '+upgrades);
+if(upgrades%2===1)triggerJackpot();
+if(upgrades>=5)addMsg('所有升級完成！維持 35 戶舒適即可達標');
+updateHUD();
+}
+
+function update(dt){
+blink+=dt;shake=Math.max(0,shake-dt*2.5);
+if(msgTimer>0)msgTimer-=dt;
+for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+if(slot.active){
+if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=120?50:18,'#ffd23f');beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();}}
+if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+}
+if(mode!=='playing')return;
+
+// 爐溫衰減（風門越高消耗越快）
+furnace=Math.max(0,furnace-dt*(0.6+draft*0.5));
+// 天氣變化
+weatherTimer+=dt;
+if(weatherTimer>12){weatherTimer=0;weather=-20+rand(20);}
+// 更新公寓溫度
+var occupiedCount=0,comfortCount=0;
+for(var i=0;i<TOTAL;i++){
+var apt=apartments[i];
+var floor=Math.floor(i/ROOMS);
+var heat=(furnace/100)*(0.5+draft*0.3)*distribution[floor];
+var target=18+heat*14+weather*0.15+upgrades*0.5;
+apt.temp+=(target-apt.temp)*dt*0.25;
+if(apt.occupied){
+occupiedCount++;
+if(apt.temp>=19&&apt.temp<=25){apt.comfort=true;comfortCount++;apt.discontent=Math.max(0,apt.discontent-dt);}
+else{apt.comfort=false;apt.discontent+=dt;if(apt.discontent>8){apt.occupied=false;addMsg('有住戶搬走了！');beep(180,.2,'sawtooth',.04);}}
+}
+}
+// 舒適度收入
+var com=apartments.filter(function(a){return a.occupied&&a.comfort;}).length;
+comfortPts+=com*dt*0.3;
+chips+=com*dt*0.5;
+if(com>=TOTAL && !slot.active && Math.random()<dt*0.2)triggerJackpot();
+if(occupiedCount===0){gameOver();return;}
+if(upgrades>=5&&com>=TOTAL){win();return;}
+updateHUD();
+}
+
+function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+fit();window.addEventListener('resize',fit);
+
+function render(){
+ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+ctx.fillStyle='#12101a';ctx.fillRect(0,0,W,H);
+// 左側鍋爐
+ctx.fillStyle='#3a2418';ctx.fillRect(30,180,140,220);
+ctx.strokeStyle='#c48c46';ctx.lineWidth=3;ctx.strokeRect(30,180,140,220);
+ctx.fillStyle='#ff6b3f';ctx.beginPath();ctx.arc(100,300,40,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ffd23f';ctx.font='bold 14px system-ui';ctx.textAlign='center';
+ctx.fillText('爐溫 '+Math.round(furnace),100,240);
+ctx.fillText('煤 '+coal,100,380);
+// 大樓剖面
+var bx=210,by=60,bw=560,bh=340;
+ctx.fillStyle='#1a1822';ctx.fillRect(bx,by,bw,bh);
+ctx.strokeStyle='#6a5a48';ctx.lineWidth=2;ctx.strokeRect(bx,by,bw,bh);
+for(var f=0;f<FLOORS;f++){
+var fy=by+f*(bh/FLOORS);
+ctx.strokeStyle='#4a3a30';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(bx,fy);ctx.lineTo(bx+bw,fy);ctx.stroke();
+for(var r=0;r<ROOMS;r++){
+var apt=apartments[f*ROOMS+r];
+var rx=bx+10+r*((bw-20)/ROOMS),ry=fy+8;
+var rw=(bw-20)/ROOMS-6,rh=bh/FLOORS-14;
+ctx.fillStyle=apt.occupied?(apt.comfort?'rgba(255,180,80,.7)':'rgba(120,150,200,.4)'):'rgba(60,60,70,.5)';
+ctx.fillRect(rx,ry,rw,rh);
+ctx.strokeStyle='#3a3040';ctx.lineWidth=1;ctx.strokeRect(rx,ry,rw,rh);
+ctx.fillStyle='#fff';ctx.font='bold 11px ui-monospace,monospace';ctx.textAlign='center';
+if(apt.occupied)ctx.fillText(Math.round(apt.temp)+'°',rx+rw/2,ry+rh/2+4);
+else ctx.fillText('×',rx+rw/2,ry+rh/2+4);
+}
+}
+// 室外天氣
+ctx.fillStyle='#7db8ff';ctx.font='bold 16px system-ui';ctx.textAlign='left';
+ctx.fillText('室外 '+weather+'°C · 風門 '+DRAFTS[draft],24,30);
+ctx.fillStyle='#ffd23f';ctx.font='bold 14px system-ui';ctx.fillText('舒適度 '+Math.round(comfortPts),24,H-20);
+particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+ctx.fillStyle='rgba(12,10,16,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+for(var k=0;k<3;k++){var sw=56,sx=px+20+k*(sw+15),sy=py+28;ctx.fillStyle='#0c0a12';ctx.fillRect(sx,sy,sw,54);ctx.strokeStyle='#f0c898';ctx.lineWidth=1.5;ctx.strokeRect(sx,sy,sw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[k],sx+sw/2,sy+36);}
+if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,H-60,W,28);ctx.fillStyle='#ffe27a';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-40);ctx.restore();}
+ctx.restore();
+}
+
+$('coalBtn').addEventListener('click',addCoal);
+$('draftBtn').addEventListener('click',cycleDraft);
+$('distBtn').addEventListener('click',distribute);
+$('upgradeBtn').addEventListener('click',buyUpgrade);
+$('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+window.addEventListener('keydown',function(e){unlockAudio();
+if(e.code==='Digit1')addCoal();else if(e.code==='Digit2')distribute();else if(e.code==='KeyU')buyUpgrade();});
+canvas.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();addCoal();});
+var last=performance.now(),acc=0;
+function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var step=1/120,g=0;while(acc>=step&&g++<12){update(step);acc-=step;}render();requestAnimationFrame(frame);}
+initApts();   // 開始畫面也需要資料，避免 render 讀到空陣列
+updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
