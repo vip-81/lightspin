@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e12">
+<meta name="description" content="金幣調度員：改編自 Ludum Dare 60《Rail Switcher》的 Casino 反應遊戲。點擊切換岔道，把彩色黃金列車導向同色車站，送對 20 台賺籌碼，送錯 5 台就失敗。">
+<title>金幣調度員 · GOLDEN DISPATCHER｜LightSpin</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:radial-gradient(circle at 18% 12%,rgba(80,160,140,.14),transparent 44%),radial-gradient(circle at 82% 24%,rgba(200,140,60,.10),transparent 42%),#05090b;color:#e0e8e4;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:12px 10px 24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(100%,820px)}
+h1{margin:0 0 2px;text-align:center;font-size:clamp(20px,4.4vw,30px);letter-spacing:.08em;color:#9fe0c8;text-shadow:0 0 10px rgba(80,160,140,.7),0 0 26px rgba(200,140,60,.4)}
+.sub{margin:0 0 10px;text-align:center;font-size:11px;letter-spacing:.18em;color:#cdb894;opacity:.85}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:2px solid rgba(120,200,170,.35);border-radius:8px;overflow:hidden;touch-action:none;box-shadow:0 0 30px rgba(80,160,140,.16),inset 0 0 50px rgba(0,0,0,.5)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:rgba(6,10,8,.92)}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(22px,6vw,36px);letter-spacing:.1em;color:#9fe0c8;text-shadow:0 0 14px rgba(80,160,140,.8),0 0 30px rgba(200,140,60,.4)}
+.overlay p{margin:0;font-size:13px;line-height:1.8;color:#c2d2c8;max-width:50ch}
+.big{font-size:30px;font-weight:900;color:#ffd23f;text-shadow:0 0 18px rgba(255,210,63,.7)}
+button.neon{cursor:pointer;min-height:40px;padding:8px 16px;border-radius:6px;font:inherit;font-weight:800;border:2px solid rgba(120,200,170,.5);color:#9fe0c8;background:rgba(80,160,140,.12);transition:transform .12s ease,filter .2s ease;font-size:12px}
+button.neon:hover{transform:translateY(-2px);filter:brightness(1.3)}
+button.neon:active{transform:translateY(0)}
+button.neon.primary{background:linear-gradient(135deg,#5ae0a0,#9ff8cc);color:#081a12;border-color:transparent}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.hud>div{background:linear-gradient(180deg,rgba(80,160,140,.12),rgba(20,30,26,.1));border:1px solid rgba(120,200,170,.22);border-radius:6px;padding:7px 3px;text-align:center}
+.hud span{display:block;font-size:10px;letter-spacing:.06em;color:#cdb894}
+.hud strong{display:block;font-size:15px;color:#e0e8e4;margin-top:2px}
+.hud .gold strong{color:#ffd23f}
+.controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tips{margin:10px 2px 0;font-size:12px;line-height:1.7;color:#98a8a0;text-align:center}
+.tips b{color:#ffd23f}
+:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>金幣調度員</h1>
+<p class="sub">GOLDEN DISPATCHER · MIND THE JUNCTIONS</p>
+<div class="stage">
+<canvas id="game" width="800" height="450" aria-label="金幣調度員遊戲畫面"></canvas>
+<div class="overlay" id="startScreen">
+<h2>RAIL SWITCHER</h2>
+<p>彩色黃金列車從左側進站。<br><b style="color:#9fe0c8">點擊岔道切換路線</b>，把列車導向<b>同色車站</b>。<br>送對 20 台賺滿籌碼——送錯 5 台就失業！</p>
+<button class="neon primary" id="startBtn">開始調度</button>
+<p style="font-size:11px;opacity:.75">點擊畫面上的岔道開關 · 難度會隨進度提高</p>
+</div>
+<div class="overlay hidden" id="overScreen">
+<h2>WRONG STATION</h2>
+<p>送錯太多列車，你被開除了</p>
+<p>正確 <b id="finalCorrect">0</b> · 籌碼 <b id="finalChips">0</b></p>
+<button class="neon primary" id="againBtn">重新調度</button>
+</div>
+<div class="overlay hidden" id="winScreen">
+<h2>MASTER DISPATCHER</h2>
+<p>所有列車都送對了！</p>
+<div class="big" id="winScore">0 籌碼</div>
+<button class="neon primary" id="winAgainBtn">再玩一次</button>
+</div>
+</div>
+<div class="hud">
+<div class="gold"><span>籌碼</span><strong id="hChips">0</strong></div>
+<div><span>正確</span><strong id="hCorrect">0/20</strong></div>
+<div><span>錯誤</span><strong id="hWrong">0/5</strong></div>
+<div><span>速度</span><strong id="hSpeed">1.0×</strong></div>
+<div><span>JACKPOT</span><strong id="hJackpot">0</strong></div>
+</div>
+<div class="controls">
+<button class="neon" id="switch1">切換上路岔道</button>
+<button class="neon" id="switch2">切換下路岔道</button>
+</div>
+<p class="tips">改編自 Ludum Dare 60 作品《Rail Switcher》（digital bacon）的「切換岔道 + 彩色分類 + 難度遞增」機制。<b>所有籌碼皆為虛擬</b>，僅供技術示範。</p>
+</div>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var $=function(id){return document.getElementById(id);};
+var W=800,H=450;
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var rand=function(n){return (Math.random()*n)|0;};
+
+var COLORS=[
+{name:'紅',c:'#ff6b6b',stationY:90},
+{name:'綠',c:'#7de0a0',stationY:170},
+{name:'藍',c:'#7db8ff',stationY:250},
+{name:'黃',c:'#ffd23f',stationY:330}
+];
+var GOAL=20,MAX_WRONG=5;
+var mode='start';
+var trains=[];
+var junctions=[false,false];  // 兩組岔道狀態
+var correct=0,wrong=0,chips=0,jackpots=0;
+var spawnTimer=0,speedMul=1;
+var shake=0,blink=0,msg='',msgTimer=0;
+var particles=[];
+var slot={active:false,reels:['7','★','◆'],t:0,pay:null,timer:0};
+var SYMBOLS=['7','★','◆','▲','●'];
+var actx=null;
+function unlockAudio(){try{if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
+function beep(f,d,ty,g){if(!actx)return;try{var t=actx.currentTime,o=actx.createOscillator(),a=actx.createGain();o.type=ty||'square';o.frequency.setValueAtTime(f,t);a.gain.setValueAtTime(g||.04,t);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function coin(){beep(880,.05,'sine',.04);}
+function click(){beep(500,.04,'square',.03);}
+function burst(x,y,n,c){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=50+Math.random()*160;particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-60,life:.4+Math.random()*.4,maxLife:.8,color:c,size:2+Math.random()*3});}}
+
+function addMsg(t){msg=t;msgTimer=1.4;}
+function updateHUD(){
+$('hChips').textContent=chips;
+$('hCorrect').textContent=correct+'/'+GOAL;
+$('hWrong').textContent=wrong+'/'+MAX_WRONG;
+$('hSpeed').textContent=speedMul.toFixed(1)+'×';
+$('hJackpot').textContent=jackpots;
+}
+function resetGame(){
+correct=0;wrong=0;chips=0;jackpots=0;speedMul=1;
+junctions=[false,false];trains=[];spawnTimer=0;shake=0;particles=[];
+slot.active=false;slot.pay=null;
+addMsg('調度開始！');updateHUD();
+}
+function startGame(){unlockAudio();resetGame();mode='playing';['startScreen','overScreen','winScreen'].forEach(function(id){$(id).classList.add('hidden');});coin();}
+function gameOver(){mode='over';$('finalCorrect').textContent=correct;$('finalChips').textContent=chips;$('overScreen').classList.remove('hidden');shake=1;beep(120,.35,'sawtooth',.06);}
+function win(){mode='win';$('winScore').textContent=chips+' 籌碼';$('winScreen').classList.remove('hidden');beep(523,.12,'sine',.05);setTimeout(function(){beep(659,.12,'sine',.05);},110);setTimeout(function(){beep(784,.18,'sine',.05);},220);}
+function triggerJackpot(){jackpots++;slot.active=true;slot.t=.9;slot.pay=null;slot.timer=0;slot.reels=['7','★','◆'];addMsg('JACKPOT！');}
+
+function spawnTrain(){trains.push({x:20,y:rand(2)===0?200:320,color:rand(COLORS.length),decided:false,speed:70*speedMul});}
+function toggleJunction(i){if(mode!=='playing')return;junctions[i]=!junctions[i];click();addMsg('岔道 '+(i+1)+' → '+(junctions[i]?'上':'下'));}
+function deliver(train,ok){
+train.dead=true;
+if(ok){
+correct++;chips+=12+correct;coin();burst(700,train.targetY,16,COLORS[train.color].c);addMsg('送對！+12');
+if(correct%5===0)triggerJackpot();
+}else{
+wrong++;shake=.6;beep(160,.2,'sawtooth',.05);addMsg('送錯了！');
+}
+speedMul=1+correct*0.03;
+if(wrong>=MAX_WRONG)gameOver();
+else if(correct>=GOAL)win();
+updateHUD();
+}
+
+function update(dt){
+blink+=dt;shake=Math.max(0,shake-dt*2.5);
+if(msgTimer>0)msgTimer-=dt;
+for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+if(slot.active){
+if(slot.t>0){slot.t-=dt;if(slot.t>0){for(var k=0;k<3;k++)if(Math.random()<.35)slot.reels[k]=SYMBOLS[rand(SYMBOLS.length)];}
+else if(slot.pay===null&&slot.timer===0){for(var j=0;j<3;j++)slot.reels[j]=SYMBOLS[rand(SYMBOLS.length)];
+var a=slot.reels[0],b=slot.reels[1],c=slot.reels[2];
+var pay=(a===b&&b===c)?120:((a===b||b===c||a===c)?40:12);
+chips+=pay;slot.pay=pay;slot.timer=.01;burst(W/2,H/2,pay>=120?50:18,'#ffd23f');beep(pay>=120?1046:660,.14,'sine',.06);updateHUD();}}
+if(slot.timer>0){slot.timer+=dt;if(slot.timer>.8){slot.active=false;slot.timer=0;}}
+}
+if(mode!=='playing')return;
+
+spawnTimer-=dt;
+if(spawnTimer<=0){spawnTrain();spawnTimer=Math.max(0.5,1.6-correct*0.04);}
+for(var i=trains.length-1;i>=0;i--){
+var t=trains[i];
+if(t.dead){trains.splice(i,1);continue;}
+// 到岔道前決定路線
+if(t.x>360&&!t.decided){
+t.decided=true;
+var j=t.y<260?junctions[0]:junctions[1];
+// 上岔道 -> 送往上半色(红/绿)，下岔道 -> 下半色(蓝/黄)
+t.targetY=j?(t.color<2?COLORS[t.color].stationY:COLORS[(t.color+2)%4].stationY):
+             (t.color>=2?COLORS[t.color].stationY:COLORS[(t.color+2)%4].stationY);
+}
+if(t.decided){
+// 從岔道走向目標站（先水平後垂直）
+if(t.x<680)t.x+=t.speed*dt;
+else{
+var dy=t.targetY-t.y;
+t.y+=clamp(dy,-60*dt,60*dt);
+if(Math.abs(dy)<3){
+var ok=(t.color===COLORS.findIndex(function(c){return c.stationY===t.targetY;}));
+deliver(t,ok);
+}
+}
+}else{
+t.x+=t.speed*dt;
+}
+}
+}
+
+function fit(){var d=Math.min(window.devicePixelRatio||1,2);canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);}
+fit();window.addEventListener('resize',fit);
+
+function render(){
+ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*8,(Math.random()-.5)*shake*8);
+ctx.fillStyle='#0a1210';ctx.fillRect(0,0,W,H);
+// 軌道
+ctx.strokeStyle='#3a4a42';ctx.lineWidth=6;
+ctx.beginPath();ctx.moveTo(0,200);ctx.lineTo(360,200);ctx.stroke();
+ctx.beginPath();ctx.moveTo(0,320);ctx.lineTo(360,320);ctx.stroke();
+ctx.beginPath();ctx.moveTo(360,200);ctx.lineTo(680,200);ctx.stroke();
+ctx.beginPath();ctx.moveTo(360,320);ctx.lineTo(680,320);ctx.stroke();
+ctx.strokeStyle='#2a3a32';ctx.lineWidth=2;
+for(var y=90;y<=330;y+=80){ctx.beginPath();ctx.moveTo(680,200);ctx.lineTo(680,y);ctx.stroke();}
+// 車站
+COLORS.forEach(function(c){
+ctx.fillStyle='rgba(20,30,26,.9)';ctx.fillRect(680,c.stationY-28,110,56);
+ctx.strokeStyle=c.c;ctx.lineWidth=3;ctx.strokeRect(680,c.stationY-28,110,56);
+ctx.fillStyle=c.c;ctx.font='bold 16px system-ui';ctx.textAlign='center';
+ctx.fillText(c.name+'站',735,c.stationY+6);
+});
+// 岔道
+[0,1].forEach(function(i){
+var jy=i===0?200:320;
+var on=junctions[i];
+ctx.fillStyle='#1a2a22';ctx.fillRect(340,jy-24,40,48);
+ctx.strokeStyle=on?'#7de0a0':'#8a8a8a';ctx.lineWidth=2;ctx.strokeRect(340,jy-24,40,48);
+ctx.fillStyle=on?'#7de0a0':'#666';ctx.font='bold 13px system-ui';ctx.textAlign='center';
+ctx.fillText(on?'▲':'▼',360,jy+5);
+});
+// 列車
+trains.forEach(function(t){
+var c=COLORS[t.color];
+ctx.fillStyle=c.c;ctx.shadowColor=c.c;ctx.shadowBlur=10;
+ctx.fillRect(t.x-16,t.y-10,32,20);
+ctx.shadowBlur=0;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.strokeRect(t.x-16,t.y-10,32,20);
+ctx.fillStyle='#222';ctx.beginPath();ctx.arc(t.x-8,t.y+12,4,0,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.arc(t.x+8,t.y+12,4,0,Math.PI*2);ctx.fill();
+});
+particles.forEach(function(p){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();});
+if(slot.active){ctx.save();var pw=260,ph=125,px=W/2-pw/2,py=18;
+ctx.fillStyle='rgba(10,16,12,.96)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#ffd23f';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+ctx.fillStyle='#ffd23f';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('JACKPOT',W/2,py+16);
+for(var i=0;i<3;i++){var rw=56,rx=px+20+i*(rw+15),ry=py+28;ctx.fillStyle='#0c1210';ctx.fillRect(rx,ry,rw,54);ctx.strokeStyle='#9fe0c8';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,rw,54);ctx.fillStyle='#ffd23f';ctx.font='900 30px system-ui';ctx.fillText(slot.reels[i],rx+rw/2,ry+36);}
+if(slot.pay!==null){ctx.fillStyle='#39ff88';ctx.font='bold 14px system-ui';ctx.fillText('+ '+slot.pay+' 籌碼',W/2,py+110);}ctx.restore();}
+if(msgTimer>0){ctx.save();ctx.globalAlpha=Math.min(1,msgTimer);ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,H-30,W,30);ctx.fillStyle='#ffe27a';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(msg,W/2,H-10);ctx.restore();}
+ctx.restore();
+}
+
+canvas.addEventListener('pointerdown',function(e){e.preventDefault();unlockAudio();
+var rect=canvas.getBoundingClientRect();
+var mx=(e.clientX-rect.left)/rect.width*W,my=(e.clientY-rect.top)/rect.height*H;
+if(mx>=340&&mx<=380){toggleJunction(my<260?0:1);}
+});
+$('switch1').addEventListener('click',function(){toggleJunction(0);});
+$('switch2').addEventListener('click',function(){toggleJunction(1);});
+$('startBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('againBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+$('winAgainBtn').addEventListener('click',function(e){e.stopPropagation();startGame();});
+var last=performance.now(),acc=0;
+function frame(now){var dt=(now-last)/1000;last=now;if(!isFinite(dt)||dt<0)dt=0;if(dt>.05)dt=.05;acc+=dt;var step=1/120,g=0;while(acc>=step&&g++<12){update(step);acc-=step;}render();requestAnimationFrame(frame);}
+updateHUD();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
